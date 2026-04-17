@@ -12,20 +12,34 @@ class ClinicSafeModelViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         queryset = super().get_queryset()
+        model = queryset.model
 
-        # Futuro suporte para superadmin global
+        # 🔓 Superadmin vê tudo
         if getattr(user, "role", None) == "superadmin":
-            if hasattr(queryset.model, "is_deleted"):
+            if hasattr(model, "is_deleted"):
                 return queryset.filter(is_deleted=False)
             return queryset
 
-        # Regra padrão: usuário só enxerga dados da própria clínica
-        filters = {"clinic": user.clinic}
+        # 🏥 Model com clinic direto
+        if hasattr(model, "clinic"):
+            filters = {"clinic": user.clinic}
 
-        if hasattr(queryset.model, "is_deleted"):
-            filters["is_deleted"] = False
+            if hasattr(model, "is_deleted"):
+                filters["is_deleted"] = False
 
-        return queryset.filter(**filters)
+            return queryset.filter(**filters)
+
+        # 🏥 Model com relacionamento via atendimento
+        if hasattr(model, "atendimento"):
+            filters = {"atendimento__clinic": user.clinic}
+
+            if hasattr(model, "is_deleted"):
+                filters["is_deleted"] = False
+
+            return queryset.filter(**filters)
+
+        # 🛑 Se não tiver vínculo com clínica, não retorna nada
+        return queryset.none()
 
     # 🏥 Garante que o clinic nunca venha do frontend
     def perform_create(self, serializer):

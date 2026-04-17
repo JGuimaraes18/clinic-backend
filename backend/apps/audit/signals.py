@@ -44,9 +44,22 @@ def serialize_value(value):
 
 def model_to_dict_safe(instance):
     data = {}
+
     for field in instance._meta.fields:
         value = getattr(instance, field.name)
+
+        # 🔐 Se for ForeignKey → salva apenas o ID
+        if isinstance(field, models.ForeignKey):
+            data[field.name] = value.pk if value else None
+            continue
+
+        # 🔐 Se for OneToOne → salva ID
+        if isinstance(field, models.OneToOneField):
+            data[field.name] = value.pk if value else None
+            continue
+
         data[field.name] = serialize_value(value)
+
     return data
 
 def get_severity(model_name, action):
@@ -85,7 +98,7 @@ def capture_old_data(sender, instance, **kwargs):
 
     try:
         old_instance = sender.objects.get(pk=instance.pk)
-        instance._old_data = model_to_dict(old_instance)
+        instance._old_data = model_to_dict_safe(old_instance)
     except sender.DoesNotExist:
         instance._old_data = None
 
@@ -96,7 +109,7 @@ def log_create_update(sender, instance, created, **kwargs):
     if not should_audit(sender, instance):
         return
     
-    severity=get_severity(sender.__name__, "CREATE" if created else "UPDATE"),
+    severity=get_severity(sender.__name__, "CREATE" if created else "UPDATE")
 
     user = get_current_user()
     clinic = getattr(instance, "clinic", None)
@@ -141,7 +154,7 @@ def log_delete(sender, instance, **kwargs):
     if not should_audit(sender, instance):
         return
 
-    severity=get_severity(sender.__name__, "DELETE"),
+    severity=get_severity(sender.__name__, "DELETE")
 
     user = get_current_user()
     clinic = getattr(instance, "clinic", None)

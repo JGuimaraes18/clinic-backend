@@ -11,6 +11,12 @@ class Atendimento(models.Model):
         ("CANCELADO", "Cancelado"),
     ]
 
+    clinic = models.ForeignKey(
+        "clinics.Clinic",
+        on_delete=models.CASCADE,
+        related_name="appointments",
+    )
+
     paciente = models.ForeignKey(
         "patients.Patient",
         on_delete=models.PROTECT,

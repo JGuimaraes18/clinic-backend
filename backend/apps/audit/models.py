@@ -31,7 +31,9 @@ class AuditLog(models.Model):
 
     clinic = models.ForeignKey(
         "clinics.Clinic",
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
     )
 
     action = models.CharField(max_length=10, choices=ACTION_CHOICES)

@@ -74,6 +74,7 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'corsheaders',
+    'drf_spectacular',
 
     'apps.accounts',
     'apps.audit',
@@ -121,7 +122,8 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_RATES': {
         'user': '1000/day',
-    }
+    },
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 AUTH_USER_MODEL = 'accounts.User'
@@ -141,3 +143,9 @@ TEMPLATES = [
         },
     },
 ]
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Clinic SaaS API',
+    'DESCRIPTION': 'API for clinic management system (patients, appointments, records)',
+    'VERSION': '1.0.0',
+}
