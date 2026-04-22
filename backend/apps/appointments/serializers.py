@@ -6,4 +6,4 @@ class AtendimentoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Atendimento
         fields = "__all__"
-        read_only_fields = ("clinic", "criado_em")
+        read_only_fields = ("clinic", "created_at", "is_deleted", "updated_at")

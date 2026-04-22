@@ -6,8 +6,9 @@ from apps.core.permissions import IsAdminOrProfessional
 
 class AtendimentoViewSet(ClinicSafeModelViewSet):
     queryset = Atendimento.objects.select_related(
+        "clinic",
         "paciente",
-        "dentista",
+        "profissional",
     )
     serializer_class = AtendimentoSerializer
     permission_classes = [IsAdminOrProfessional]

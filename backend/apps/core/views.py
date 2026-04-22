@@ -15,7 +15,7 @@ class ClinicSafeModelViewSet(viewsets.ModelViewSet):
         model = queryset.model
 
         # 🔓 Superadmin vê tudo
-        if getattr(user, "role", None) == "superadmin":
+        if getattr(user, "role", None) == "Admin":
             if hasattr(model, "is_deleted"):
                 return queryset.filter(is_deleted=False)
             return queryset

@@ -1,9 +1,10 @@
 from django.conf import settings
 from django.db import models
 from django.core.exceptions import ValidationError
+from apps.core.models import BaseModel
 
 
-class Atendimento(models.Model):
+class Atendimento(BaseModel):
 
     STATUS_CHOICES = [
         ("AGENDADO", "Agendado"),
@@ -23,10 +24,12 @@ class Atendimento(models.Model):
         related_name="atendimentos"
     )
 
-    dentista = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+    profissional = models.ForeignKey(
+        "professionals.Professional",
         on_delete=models.PROTECT,
-        related_name="atendimentos_realizados"
+        related_name="atendimentos",
+        null=True,
+        blank=True
     )
 
     data_hora = models.DateTimeField()
@@ -38,8 +41,6 @@ class Atendimento(models.Model):
     )
 
     observacoes = models.TextField(blank=True, null=True)
-
-    criado_em = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.paciente.nome} - {self.data_hora}"

@@ -17,7 +17,7 @@ class ProntuarioViewSet(ClinicSafeModelViewSet):
             .select_related(
                 "atendimento",
                 "atendimento__paciente",
-                "atendimento__dentista",
+                "atendimento__profissional",
                 "atendimento__clinic",
                 "finalizado_por",
             )
