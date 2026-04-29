@@ -13,6 +13,16 @@ class AtendimentoSerializer(serializers.ModelSerializer):
                 "Não é permitido agendar para datas passadas."
             )
         return value
+    
+    def validate(self, data):
+        request = self.context["request"]
+
+        if data.get("status") == "REALIZADO":
+            raise serializers.ValidationError(
+                "Status REALIZADO é definido automaticamente após criação de prontuário."
+            )
+
+        return data
 
     class Meta:
         model = Atendimento
