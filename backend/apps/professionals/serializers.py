@@ -21,12 +21,17 @@ class ProfessionalSerializer(serializers.ModelSerializer):
         reg_type = attrs.get("registration_type")
         reg_number = attrs.get("registration_number")
 
-        if Professional.all_objects.filter(
+        queryset = Professional.all_objects.filter(
             clinic=clinic,
             registration_type=reg_type,
             registration_number=reg_number,
             is_deleted=False
-        ).exists():
+        )
+
+        if self.instance:
+            queryset = queryset.exclude(id=self.instance.id)
+
+        if queryset.exists():
             raise serializers.ValidationError(
                 "This registration already exists in this clinic."
             )
