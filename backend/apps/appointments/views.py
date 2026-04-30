@@ -20,7 +20,7 @@ class AtendimentoViewSet(ClinicSafeModelViewSet):
     permission_classes = [IsAdminOrProfessional]
 
     @action(detail=True, methods=["post"])
-    def iniciar_atendimento(self, request, pk=None):
+    def start_attendance(self, request, pk=None):
         atendimento = self.get_object()
 
         if atendimento.status != "AGENDADO":
