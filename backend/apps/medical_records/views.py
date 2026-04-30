@@ -49,6 +49,36 @@ class ProntuarioViewSet(ClinicSafeModelViewSet):
 
         serializer.save()
 
+    @action(detail=True, methods=["get"])
+    def historico(self, request, pk=None):
+        prontuario = self.get_object()
+
+        paciente = prontuario.atendimento.paciente
+        profissional = prontuario.atendimento.profissional
+
+        historico = (
+            Prontuario.objects
+            .filter(
+                atendimento__paciente=paciente,
+                atendimento__profissional=profissional,
+                status="FECHADO"
+            )
+            .exclude(pk=prontuario.pk)
+            .select_related("atendimento")
+            .order_by("-finalizado_em")
+        )
+
+        data = [
+            {
+                "id": p.id,
+                "data": p.finalizado_em,
+                "resumo": p.conteudo[:150],
+            }
+            for p in historico
+        ]
+
+        return Response(data)
+
     @action(detail=True, methods=["post"])
     def fechar(self, request, pk=None):
         prontuario = self.get_object()
@@ -69,7 +99,8 @@ class ProntuarioViewSet(ClinicSafeModelViewSet):
                 {"detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
+        
+    
 class AdendoProntuarioViewSet(ClinicSafeModelViewSet):
     serializer_class = AdendoProntuarioSerializer
     permission_classes = [IsAdminOrProfessional]
