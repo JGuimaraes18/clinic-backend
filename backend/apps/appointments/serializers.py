@@ -4,8 +4,26 @@ from .models import Atendimento
 
 
 class AtendimentoSerializer(serializers.ModelSerializer):
-    paciente_nome = serializers.CharField(source="paciente.full_name", read_only=True)
-    profissional_nome = serializers.CharField(source="profissional.full_name", read_only=True)
+
+    paciente_nome = serializers.CharField(
+        source="paciente.full_name",
+        read_only=True
+    )
+
+    profissional_nome = serializers.CharField(
+        source="profissional.full_name",
+        read_only=True
+    )
+
+    class Meta:
+        model = Atendimento
+        fields = "__all__"
+        read_only_fields = (
+            "clinic",
+            "created_at",
+            "updated_at",
+            "is_deleted",
+        )
 
     def validate_data_hora(self, value):
         if value < timezone.now():
@@ -13,18 +31,3 @@ class AtendimentoSerializer(serializers.ModelSerializer):
                 "Não é permitido agendar para datas passadas."
             )
         return value
-    
-    def validate(self, data):
-        request = self.context["request"]
-
-        if data.get("status") == "REALIZADO":
-            raise serializers.ValidationError(
-                "Status REALIZADO é definido automaticamente após criação de prontuário."
-            )
-
-        return data
-
-    class Meta:
-        model = Atendimento
-        fields = "__all__"
-        read_only_fields = ("clinic", "created_at", "is_deleted", "updated_at")

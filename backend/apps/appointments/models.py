@@ -1,6 +1,5 @@
 from django.conf import settings
 from django.db import models
-from django.core.exceptions import ValidationError
 from apps.core.models import BaseModel
 
 
@@ -8,6 +7,7 @@ class Atendimento(BaseModel):
 
     STATUS_CHOICES = [
         ("AGENDADO", "Agendado"),
+        ("EM_ATENDIMENTO", "Em Atendimento"),
         ("REALIZADO", "Realizado"),
         ("CANCELADO", "Cancelado"),
     ]
@@ -15,7 +15,7 @@ class Atendimento(BaseModel):
     clinic = models.ForeignKey(
         "clinics.Clinic",
         on_delete=models.CASCADE,
-        related_name="appointments",
+        related_name="atendimentos",
     )
 
     paciente = models.ForeignKey(
@@ -44,25 +44,6 @@ class Atendimento(BaseModel):
 
     def __str__(self):
         return f"{self.paciente.nome} - {self.data_hora}"
-    
+
     def save(self, *args, **kwargs):
-        if self.pk:
-            original = Atendimento.objects.only("status").get(pk=self.pk)
-
-            if (
-                original.status != "REALIZADO"
-                and self.status == "REALIZADO"
-            ):
-                try:
-                    prontuario = self.prontuario
-                except Atendimento.prontuario.RelatedObjectDoesNotExist:
-                    raise ValidationError(
-                        "Não é possível finalizar atendimento sem prontuário."
-                    )
-
-                if not prontuario.conteudo or not prontuario.conteudo.strip():
-                    raise ValidationError(
-                        "Prontuário está vazio. Preencha antes de finalizar."
-                    )
-
         super().save(*args, **kwargs)
