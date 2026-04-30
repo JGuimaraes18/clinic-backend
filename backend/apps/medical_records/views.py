@@ -100,6 +100,19 @@ class ProntuarioViewSet(ClinicSafeModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+    @action(detail=False, methods=["get"], url_path="by-appointment/(?P<appointment_id>[^/.]+)")
+    def by_appointment(self, request, appointment_id=None):
+        try:
+            prontuario = Prontuario.objects.get(atendimento_id=appointment_id)
+        except Prontuario.DoesNotExist:
+            return Response(
+                {"detail": "Prontuário não encontrado."},
+                status=404
+            )
+
+        serializer = self.get_serializer(prontuario)
+        return Response(serializer.data)
+        
     
 class AdendoProntuarioViewSet(ClinicSafeModelViewSet):
     serializer_class = AdendoProntuarioSerializer
