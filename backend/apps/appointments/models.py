@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 from apps.core.models import BaseModel
 
 
@@ -41,6 +42,15 @@ class Atendimento(BaseModel):
     )
 
     observacoes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["clinic", "profissional", "data_hora"],
+                condition=~Q(status="CANCELADO"),
+                name="unique_active_appointment_per_slot"
+            )
+        ]
 
     def __str__(self):
         return f"{self.paciente.nome} - {self.data_hora}"
