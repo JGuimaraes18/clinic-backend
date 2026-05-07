@@ -75,10 +75,13 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "last_name",
             "password",
             "role",
+            "clinic",
         ]
 
     def create(self, validated_data):
         password = validated_data.pop("password")
+        clinic = validated_data.pop("clinic", None)
+
         user = User(**validated_data)
         user.set_password(password)
 
@@ -86,10 +89,50 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
         if request.user.is_superuser:
             # superuser pode escolher clinic
-            user.clinic = validated_data.get("clinic")
+            user.clinic = clinic
         else:
             # admin só pode criar dentro da própria clínica
             user.clinic = request.user.clinic
 
         user.save()
         return user
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+
+    clinic = serializers.PrimaryKeyRelatedField(
+        queryset=Clinic.objects.all(),
+        required=False,
+        allow_null=True
+    )
+
+    password = serializers.CharField(write_only=True, required=False)
+
+    class Meta:
+        model = User
+        fields = [
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "role",
+            "clinic",
+            "password",
+        ]
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop("password", None)
+        clinic = validated_data.pop("clinic", None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        request = self.context["request"]
+
+        if request.user.is_superuser:
+            instance.clinic = clinic
+
+        if password:
+            instance.set_password(password)
+
+        instance.save()
+        return instance    

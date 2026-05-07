@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.viewsets import ModelViewSet
 from django.contrib.auth import get_user_model
-from .serializers import LoginSerializer, UserCreateSerializer
+from .serializers import LoginSerializer, UserCreateSerializer, UserUpdateSerializer
 from .serializers import UserMeSerializer
 
 User = get_user_model()
@@ -56,4 +56,11 @@ class UserViewSet(ModelViewSet):
     def get_serializer_class(self):
         if self.action == "create":
             return UserCreateSerializer
+        return UserMeSerializer
+    
+    def get_serializer_class(self):
+        if self.action == "create":
+            return UserCreateSerializer
+        if self.action in ["update", "partial_update"]:
+            return UserUpdateSerializer
         return UserMeSerializer
