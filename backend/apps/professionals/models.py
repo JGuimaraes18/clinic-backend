@@ -1,24 +1,18 @@
 from django.db import models
 from django.db.models import UniqueConstraint
 from apps.core.models import BaseModel
+from apps.accounts.models import Membership
 
 
 class Professional(BaseModel):
 
-    clinic = models.ForeignKey(
-        "clinics.Clinic",
+    membership = models.OneToOneField(
+        Membership,
         on_delete=models.CASCADE,
-        related_name="professionals"
+        related_name="professional_profile"
     )
 
-    full_name = models.CharField(max_length=255)
-
-    phone = models.CharField(max_length=20, blank=True, null=True)
-
-    email = models.EmailField(blank=True, null=True)
-
     registration_type = models.CharField(max_length=50)
-
     registration_number = models.CharField(max_length=50)
 
     specialty = models.CharField(
@@ -32,10 +26,10 @@ class Professional(BaseModel):
     class Meta:
         constraints = [
             UniqueConstraint(
-                fields=["clinic", "registration_type", "registration_number"],
-                name="unique_registration_per_clinic"
+                fields=["membership", "registration_type", "registration_number"],
+                name="unique_registration_per_membership"
             )
         ]
 
     def __str__(self):
-        return f"{self.full_name} ({self.registration_type})"
+        return f"{self.membership.user.get_full_name()} ({self.registration_type})"

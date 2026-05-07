@@ -3,7 +3,6 @@ from django.db import models
 from django.db.models import Q
 from apps.core.models import BaseModel
 
-
 class Atendimento(BaseModel):
 
     STATUS_CHOICES = [
@@ -53,7 +52,4 @@ class Atendimento(BaseModel):
         ]
 
     def __str__(self):
-        return f"{self.paciente.nome} - {self.data_hora}"
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
+        return f"{self.paciente.full_name} - {self.data_hora}"

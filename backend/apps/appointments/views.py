@@ -4,10 +4,8 @@ from rest_framework.response import Response
 from apps.core.views import ClinicSafeModelViewSet
 from apps.medical_records.models import Prontuario
 from django.db import transaction
-
 from .models import Atendimento
 from .serializers import AtendimentoSerializer
-
 
 class AtendimentoViewSet(ClinicSafeModelViewSet):
 
@@ -19,6 +17,18 @@ class AtendimentoViewSet(ClinicSafeModelViewSet):
 
     serializer_class = AtendimentoSerializer
     permission_classes = [IsClinicUserWithRestrictions]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        membership = self.request.user.memberships.filter(
+            is_active=True
+        ).first()
+
+        if not membership:
+            return Atendimento.objects.none()
+
+        return queryset.filter(clinic=membership.clinic)
 
     @action(detail=True, methods=["post"])
     def start_attendance(self, request, pk=None):

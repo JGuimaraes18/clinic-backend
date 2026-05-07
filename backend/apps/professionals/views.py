@@ -5,6 +5,9 @@ from .serializers import ProfessionalSerializer
 
 
 class ProfessionalViewSet(ClinicSafeModelViewSet):
-    queryset = Professional.objects.all()
+    queryset = Professional.objects.select_related(
+        "membership",
+        "membership__user"
+    )
     serializer_class = ProfessionalSerializer
     permission_classes = [IsClinicUserWithRestrictions]

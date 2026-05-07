@@ -9,11 +9,11 @@ from apps.clinics.views import ClinicViewSet
 
 router = DefaultRouter()
 
-router.register(r'patients', PatientViewSet, basename='patients')
-router.register(r'appointments', AtendimentoViewSet, basename='appointments')
-router.register(r'medical-records', ProntuarioViewSet, basename='medical-records')
-router.register(r"professionals", ProfessionalViewSet)
-router.register(r"clinics", ClinicViewSet)
+router.register(r'patients', PatientViewSet, basename='patient')
+router.register(r'appointments', AtendimentoViewSet, basename='appointment')
+router.register(r'medical-records', ProntuarioViewSet, basename='medical-record')
+router.register(r'professionals', ProfessionalViewSet, basename='professional')
+router.register(r'clinics', ClinicViewSet, basename='clinic')
 
 urlpatterns = [
     path('', include(router.urls)),

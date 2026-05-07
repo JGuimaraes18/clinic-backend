@@ -6,8 +6,14 @@ from apps.core.models import BaseModel
 from apps.core.fields import EncryptedTextField
 from django.conf import settings
 
+
 class Patient(BaseModel):
-    clinic = models.ForeignKey("clinics.Clinic", on_delete=models.CASCADE)
+    clinic = models.ForeignKey(
+        "clinics.Clinic",
+        on_delete=models.CASCADE,
+        related_name="patients"
+    )
+
     full_name = models.CharField(max_length=255)
     cpf = EncryptedTextField(null=True, blank=True)
     cpf_hash = models.CharField(max_length=64, null=True, blank=True, db_index=True)
@@ -26,7 +32,8 @@ class Patient(BaseModel):
 
     def save(self, *args, **kwargs):
         if self.cpf:
-            self.cpf_hash = self.generate_cpf_hash(self.cpf)
+            cpf_normalizado = self.normalize_cpf(self.cpf)
+            self.cpf_hash = self.generate_cpf_hash(cpf_normalizado)
         super().save(*args, **kwargs)
 
     def generate_cpf_hash(self, cpf_value):
@@ -35,6 +42,9 @@ class Patient(BaseModel):
             cpf_value.encode(),
             hashlib.sha256
         ).hexdigest()
+
+    def normalize_cpf(self, value: str) -> str:
+        return "".join(filter(str.isdigit, value or ""))
 
     def __str__(self):
         return self.full_name

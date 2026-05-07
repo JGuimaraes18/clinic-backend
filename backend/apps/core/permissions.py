@@ -1,21 +1,36 @@
 from rest_framework.permissions import BasePermission
 
 
-class IsAdmin(BasePermission):
+class BaseRolePermission(BasePermission):
+
+    allowed_roles = []
+
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role == "admin"
+        user = request.user
+
+        if not user or not user.is_authenticated:
+            return False
+
+        # Superuser sempre tem acesso
+        if user.is_superuser:
+            return True
+
+        user_role = getattr(user, "role", None)
+
+        return user_role in self.allowed_roles
 
 
-class IsProfessional(BasePermission):
-    def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role == "professional"
+class IsAdmin(BaseRolePermission):
+    allowed_roles = ["admin"]
 
 
-class IsStaff(BasePermission):
-    def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role == "staff"
+class IsProfessional(BaseRolePermission):
+    allowed_roles = ["professional"]
 
 
-class IsAdminOrProfessional(BasePermission):
-    def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role in ["admin", "professional"]
+class IsStaff(BaseRolePermission):
+    allowed_roles = ["staff"]
+
+
+class IsAdminOrProfessional(BaseRolePermission):
+    allowed_roles = ["admin", "professional"]
