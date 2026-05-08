@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.utils import timezone
 from django.db import IntegrityError
 from apps.accounts.models import Membership
+from apps.professionals.models import ProfessionalClinic
 from .models import Atendimento
 
 
@@ -13,7 +14,7 @@ class AtendimentoSerializer(serializers.ModelSerializer):
     )
 
     profissional_nome = serializers.CharField(
-        source="profissional.full_name",
+        source="profissional.user.get_full_name",
         read_only=True
     )
 
@@ -27,6 +28,9 @@ class AtendimentoSerializer(serializers.ModelSerializer):
             "is_deleted",
         )
 
+    # ----------------------------------------------------
+    # UTIL
+    # ----------------------------------------------------
     def get_user_clinic(self):
         request = self.context["request"]
 
@@ -36,10 +40,15 @@ class AtendimentoSerializer(serializers.ModelSerializer):
         ).first()
 
         if not membership:
-            raise serializers.ValidationError("Usuário sem clínica ativa.")
+            raise serializers.ValidationError(
+                "Usuário sem clínica ativa."
+            )
 
         return membership.clinic
 
+    # ----------------------------------------------------
+    # FIELD VALIDATION
+    # ----------------------------------------------------
     def validate_data_hora(self, value):
         if value < timezone.now():
             raise serializers.ValidationError(
@@ -47,6 +56,9 @@ class AtendimentoSerializer(serializers.ModelSerializer):
             )
         return value
 
+    # ----------------------------------------------------
+    # OBJECT VALIDATION
+    # ----------------------------------------------------
     def validate(self, attrs):
         clinic = self.get_user_clinic()
 
@@ -54,16 +66,27 @@ class AtendimentoSerializer(serializers.ModelSerializer):
         profissional = attrs.get("profissional")
         data_hora = attrs.get("data_hora")
 
-        if paciente and paciente.clinic != clinic:
-            raise serializers.ValidationError(
-                {"paciente": "Paciente não pertence a esta clínica."}
-            )
+        # ✅ Validação paciente (caso Patient tenha FK direta para clinic)
+        if paciente and hasattr(paciente, "clinic"):
+            if paciente.clinic != clinic:
+                raise serializers.ValidationError(
+                    {"paciente": "Paciente não pertence a esta clínica."}
+                )
 
-        if profissional and profissional.clinic != clinic:
-            raise serializers.ValidationError(
-                {"profissional": "Profissional não pertence a esta clínica."}
-            )
+        # ✅ Validação profissional via ProfessionalClinic
+        if profissional:
+            is_linked = ProfessionalClinic.objects.filter(
+                professional=profissional,
+                membership__clinic=clinic,
+                is_active=True
+            ).exists()
 
+            if not is_linked:
+                raise serializers.ValidationError(
+                    {"profissional": "Profissional não pertence a esta clínica."}
+                )
+
+        # ✅ Validação conflito de horário
         if profissional and data_hora:
             queryset = Atendimento.objects.filter(
                 clinic=clinic,
@@ -81,6 +104,9 @@ class AtendimentoSerializer(serializers.ModelSerializer):
 
         return attrs
 
+    # ----------------------------------------------------
+    # CREATE
+    # ----------------------------------------------------
     def create(self, validated_data):
         clinic = self.get_user_clinic()
         validated_data["clinic"] = clinic
@@ -92,6 +118,9 @@ class AtendimentoSerializer(serializers.ModelSerializer):
                 "Já existe um agendamento para esse profissional nesse horário."
             )
 
+    # ----------------------------------------------------
+    # UPDATE
+    # ----------------------------------------------------
     def update(self, instance, validated_data):
         try:
             return super().update(instance, validated_data)

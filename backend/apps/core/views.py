@@ -22,12 +22,13 @@ class ClinicSafeModelViewSet(viewsets.ModelViewSet):
 
         return membership.clinic
 
+
     def get_queryset(self):
         queryset = super().get_queryset()
         model = queryset.model
-
         user = self.request.user
 
+        # Superuser vê tudo
         if user.is_superuser:
             if hasattr(model, "is_deleted"):
                 return queryset.filter(is_deleted=False)
@@ -35,6 +36,7 @@ class ClinicSafeModelViewSet(viewsets.ModelViewSet):
 
         clinic = self.get_user_clinic()
 
+        # Modelo possui campo clinic direto
         if hasattr(model, "clinic"):
             filters = {"clinic": clinic}
 
@@ -43,6 +45,7 @@ class ClinicSafeModelViewSet(viewsets.ModelViewSet):
 
             return queryset.filter(**filters)
 
+        # Modelo possui relacionamento via atendimento
         if hasattr(model, "atendimento"):
             filters = {"atendimento__clinic": clinic}
 
@@ -51,7 +54,13 @@ class ClinicSafeModelViewSet(viewsets.ModelViewSet):
 
             return queryset.filter(**filters)
 
-        return queryset.none()
+        # 🔥 CORREÇÃO AQUI
+        # Se o modelo NÃO tem clinic nem atendimento,
+        # retorna normalmente (ex: tabelas globais)
+        if hasattr(model, "is_deleted"):
+            return queryset.filter(is_deleted=False)
+
+        return queryset
 
 
     def perform_create(self, serializer):

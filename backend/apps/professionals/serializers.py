@@ -1,49 +1,50 @@
 from rest_framework import serializers
-from .models import Professional
 from apps.accounts.models import Membership
+from .models import Professional, ProfessionalClinic
 
 
 class ProfessionalSerializer(serializers.ModelSerializer):
 
-    user_id = serializers.IntegerField(write_only=True)
-
     full_name = serializers.CharField(
-        source="membership.user.get_full_name",
-        read_only=True
-    )
-
-    email = serializers.EmailField(
-        source="membership.user.email",
+        source="user.get_full_name",
         read_only=True
     )
 
     class Meta:
         model = Professional
         fields = "__all__"
-        read_only_fields = [
-            "is_deleted",
+        read_only_fields = (
             "created_at",
-            "updated_at"
-        ]
+            "updated_at",
+            "is_deleted",
+        )
 
-    def validate(self, attrs):
+    def get_user_membership(self):
         request = self.context["request"]
-        user_id = self.initial_data.get("user_id")
 
-        try:
-            membership = Membership.objects.get(
-                user_id=user_id,
-                clinic=request.user.clinic,
-                role="PROFESSIONAL",
-                is_active=True
-            )
-        except Membership.DoesNotExist:
+        membership = Membership.objects.filter(
+            user=request.user,
+            is_active=True
+        ).first()
+
+        if not membership:
             raise serializers.ValidationError(
-                "User is not a professional in this clinic."
+                "Usuário não possui clínica ativa."
             )
 
-        attrs["membership"] = membership
-        return attrs
+        return membership
 
     def create(self, validated_data):
-        return Professional.objects.create(**validated_data)
+        membership = self.get_user_membership()
+
+        professional = super().create(validated_data)
+
+        # 🔥 cria automaticamente o vínculo
+        ProfessionalClinic.objects.create(
+            professional=professional,
+            membership=membership,
+            specialty=professional.specialty or "",
+            is_active=True
+        )
+
+        return professional

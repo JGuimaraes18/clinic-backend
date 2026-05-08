@@ -122,21 +122,24 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
         request = self.context["request"]
 
-        # cria usuário
         user = User(**validated_data)
         user.set_password(password)
         user.save()
 
         if request.user.is_superuser:
-            if clinic_id and role:
-                Membership.objects.create(
-                    user=user,
-                    clinic_id=clinic_id,
-                    role=role,
-                )
+            if not clinic_id:
+                raise serializers.ValidationError("Clínica é obrigatória.")
+
+            if not role:
+                raise serializers.ValidationError("Perfil é obrigatório.")
+
+            Membership.objects.create(
+                user=user,
+                clinic_id=clinic_id,
+                role=role,
+            )
 
         else:
-            # Admin só pode criar dentro da clínica ativa
             active_clinic_id = request.auth.get("clinic_id")
 
             Membership.objects.create(
@@ -150,18 +153,34 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
+    role = serializers.ChoiceField(
+        choices=Membership.ROLE_CHOICES,
+        required=False,
+        write_only=True
+    )
+    clinic_id = serializers.IntegerField(
+        required=False,
+        write_only=True
+    )
 
     class Meta:
         model = User
         fields = [
+            "username",
             "email",
             "first_name",
             "last_name",
             "password",
+            "role",
+            "clinic_id",
         ]
 
     def update(self, instance, validated_data):
         password = validated_data.pop("password", None)
+        role = validated_data.pop("role", None)
+        clinic_id = validated_data.pop("clinic_id", None)
+
+        request = self.context["request"]
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -170,4 +189,28 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             instance.set_password(password)
 
         instance.save()
+
+        membership = instance.memberships.filter(is_active=True).first()
+
+        if request.user.is_superuser:
+            if clinic_id:
+                clinic_exists = Clinic.objects.filter(id=clinic_id).exists()
+                if not clinic_exists:
+                    raise serializers.ValidationError("Clínica inválida.")
+
+                if membership:
+                    membership.clinic_id = clinic_id
+                else:
+                    membership = Membership.objects.create(
+                        user=instance,
+                        clinic_id=clinic_id,
+                        role=role or Membership.ROLE_CHOICES[0][0],
+                    )
+
+        if role and membership:
+            membership.role = role
+
+        if membership:
+            membership.save()
+
         return instance
