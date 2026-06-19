@@ -1,7 +1,6 @@
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.exceptions import ValidationError
 from django.core.exceptions import ValidationError
 from apps.core.views import ClinicSafeModelViewSet
 from apps.core.permissions import IsAdminOrProfessional
@@ -16,9 +15,17 @@ class ProntuarioViewSet(ClinicSafeModelViewSet):
     def get_queryset(self):
         user = self.request.user
 
-        qs = Prontuario.objects.filter(
-            atendimento__clinic=user.clinic
-        ).select_related(
+        # Superuser vê tudo
+        if user.is_superuser:
+            qs = Prontuario.objects.all()
+        else:
+            clinic_id = self.get_user_clinic_id()
+
+            qs = Prontuario.objects.filter(
+                atendimento__clinic_id=clinic_id
+            )
+
+        qs = qs.select_related(
             "atendimento",
             "atendimento__paciente",
             "atendimento__profissional",
@@ -113,7 +120,7 @@ class ProntuarioViewSet(ClinicSafeModelViewSet):
         serializer = self.get_serializer(prontuario)
         return Response(serializer.data)
         
-    
+
 class AdendoProntuarioViewSet(ClinicSafeModelViewSet):
     serializer_class = AdendoProntuarioSerializer
     permission_classes = [IsAdminOrProfessional]
@@ -121,8 +128,13 @@ class AdendoProntuarioViewSet(ClinicSafeModelViewSet):
     def get_queryset(self):
         user = self.request.user
 
-        return (
-            AdendoProntuario.objects
-            .filter(prontuario__atendimento__clinic=user.clinic)
-            .select_related("prontuario", "criado_por")
-        )
+        if user.is_superuser:
+            qs = AdendoProntuario.objects.all()
+        else:
+            clinic_id = self.get_user_clinic_id()
+
+            qs = AdendoProntuario.objects.filter(
+                prontuario__atendimento__clinic_id=clinic_id
+            )
+
+        return qs.select_related("prontuario", "criado_por")

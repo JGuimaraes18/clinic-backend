@@ -1,7 +1,7 @@
 import re
 from rest_framework import serializers
 from .models import Patient
-from apps.accounts.models import Membership
+from apps.clinics.models import Clinic
 
 
 def normalize_cpf(value: str) -> str:
@@ -23,22 +23,24 @@ class PatientSerializer(serializers.ModelSerializer):
 
     def get_user_clinic(self):
         request = self.context["request"]
+        clinic_id = request.auth.get("clinic_id") if request.auth else None
 
-        membership = Membership.objects.filter(
-            user=request.user,
-            is_active=True
-        ).first()
+        if request.user.is_superuser and not clinic_id:
+            return None
 
-        if not membership:
-            raise serializers.ValidationError("Usuário não vinculado a nenhuma clínica.")
+        if not clinic_id:
+            raise serializers.ValidationError("Usuário sem clínica ativa.")
 
-        return membership.clinic
+        try:
+            return Clinic.objects.get(id=clinic_id)
+        except Clinic.DoesNotExist:
+            raise serializers.ValidationError("Clínica não encontrada.")
 
     def validate(self, attrs):
         clinic = self.get_user_clinic()
         cpf = attrs.get("cpf")
 
-        if cpf:
+        if cpf and clinic:
             cpf_normalizado = normalize_cpf(cpf)
 
             if len(cpf_normalizado) != 11:
@@ -66,5 +68,6 @@ class PatientSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         clinic = self.get_user_clinic()
-        validated_data["clinic"] = clinic
+        if clinic:
+            validated_data["clinic"] = clinic
         return super().create(validated_data)

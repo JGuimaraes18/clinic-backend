@@ -1,6 +1,6 @@
-from django.contrib.auth import authenticate
-from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate, get_user_model
 from rest_framework import serializers
+
 from apps.clinics.models import Clinic
 from apps.accounts.models import Membership
 
@@ -13,6 +13,11 @@ class ClinicMiniSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "slug"]
 
 
+class MembershipSerializer(serializers.Serializer):
+    clinic = ClinicMiniSerializer()
+    role = serializers.CharField()
+
+
 class UserMeSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     memberships = serializers.SerializerMethodField()
@@ -21,7 +26,7 @@ class UserMeSerializer(serializers.ModelSerializer):
         return f"{obj.first_name} {obj.last_name}".strip()
 
     def get_memberships(self, obj):
-        memberships = obj.memberships.filter(is_active=True)
+        memberships = obj.memberships.filter(is_active=True).select_related("clinic")
 
         return [
             {
@@ -39,7 +44,6 @@ class UserMeSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id",
-            "username",
             "email",
             "first_name",
             "last_name",
@@ -51,21 +55,30 @@ class UserMeSerializer(serializers.ModelSerializer):
 
 class LoginSerializer(serializers.Serializer):
     clinic_slug = serializers.CharField(required=False)
-    username = serializers.CharField()
+    email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        username = data.get("username")
+        email = data.get("email")
         password = data.get("password")
         clinic_slug = data.get("clinic_slug")
 
-        user = authenticate(username=username, password=password)
+        user = authenticate(email=email, password=password)
 
         if not user:
             raise serializers.ValidationError("Usuário ou senha inválidos.")
 
         if user.is_superuser:
             data["user"] = user
+            if clinic_slug:
+                try:
+                    clinic = Clinic.objects.get(slug=clinic_slug)
+                    data["clinic"] = clinic
+                    data["role"] = "SUPERUSER"
+                except Clinic.DoesNotExist:
+                    raise serializers.ValidationError("Clínica não encontrada.")
+            else:
+                data["role"] = "SUPERUSER"
             return data
 
         if not clinic_slug:
@@ -106,7 +119,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            "username",
             "email",
             "first_name",
             "last_name",
@@ -122,9 +134,10 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
         request = self.context["request"]
 
-        user = User(**validated_data)
-        user.set_password(password)
-        user.save()
+        user = User.objects.create_user(
+            password=password,
+            **validated_data
+        )
 
         if request.user.is_superuser:
             if not clinic_id:
@@ -145,7 +158,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             Membership.objects.create(
                 user=user,
                 clinic_id=active_clinic_id,
-                role=role,
+                role=role or "ATTENDANT",
             )
 
         return user
@@ -166,7 +179,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            "username",
             "email",
             "first_name",
             "last_name",

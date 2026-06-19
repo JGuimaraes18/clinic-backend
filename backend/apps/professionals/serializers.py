@@ -1,14 +1,11 @@
 from rest_framework import serializers
-from apps.accounts.models import Membership
+from apps.clinics.models import Clinic
 from .models import Professional, ProfessionalClinic
 
 
 class ProfessionalSerializer(serializers.ModelSerializer):
 
-    full_name = serializers.CharField(
-        source="user.get_full_name",
-        read_only=True
-    )
+    full_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Professional
@@ -19,32 +16,48 @@ class ProfessionalSerializer(serializers.ModelSerializer):
             "is_deleted",
         )
 
-    def get_user_membership(self):
+    def get_full_name(self, obj):
+        return obj.user.get_full_name()
+
+    def get_user_clinic(self):
         request = self.context["request"]
+        clinic_id = request.auth.get("clinic_id") if request.auth else None
 
-        membership = Membership.objects.filter(
-            user=request.user,
-            is_active=True
-        ).first()
+        if request.user.is_superuser and not clinic_id:
+            return None
 
-        if not membership:
+        if not clinic_id:
             raise serializers.ValidationError(
-                "Usuário não possui clínica ativa."
+                "Usuário sem clínica ativa."
             )
 
-        return membership
+        try:
+            return Clinic.objects.get(id=clinic_id)
+        except Clinic.DoesNotExist:
+            raise serializers.ValidationError("Clínica não encontrada.")
 
     def create(self, validated_data):
-        membership = self.get_user_membership()
-
         professional = super().create(validated_data)
 
-        # 🔥 cria automaticamente o vínculo
-        ProfessionalClinic.objects.create(
-            professional=professional,
-            membership=membership,
-            specialty=professional.specialty or "",
-            is_active=True
-        )
+        request = self.context["request"]
+        clinic_id = request.auth.get("clinic_id") if request.auth else None
+
+        if clinic_id:
+            from apps.accounts.models import Membership
+            # Procura a membership do usuário recém-transformado em profissional,
+            # não a do usuário logado (que poderia ser admin/superuser)
+            membership = Membership.objects.filter(
+                user=professional.user,
+                clinic_id=clinic_id,
+                is_active=True
+            ).first()
+
+            if membership:
+                ProfessionalClinic.objects.create(
+                    professional=professional,
+                    membership=membership,
+                    specialty=professional.specialty or "",
+                    is_active=True
+                )
 
         return professional

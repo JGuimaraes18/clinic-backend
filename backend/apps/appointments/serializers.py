@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.utils import timezone
 from django.db import IntegrityError
-from apps.accounts.models import Membership
+from apps.clinics.models import Clinic
 from apps.professionals.models import ProfessionalClinic
 from .models import Atendimento
 
@@ -33,18 +33,20 @@ class AtendimentoSerializer(serializers.ModelSerializer):
     # ----------------------------------------------------
     def get_user_clinic(self):
         request = self.context["request"]
+        clinic_id = request.auth.get("clinic_id") if request.auth else None
 
-        membership = Membership.objects.filter(
-            user=request.user,
-            is_active=True
-        ).first()
+        if request.user.is_superuser and not clinic_id:
+            return None
 
-        if not membership:
+        if not clinic_id:
             raise serializers.ValidationError(
                 "Usuário sem clínica ativa."
             )
 
-        return membership.clinic
+        try:
+            return Clinic.objects.get(id=clinic_id)
+        except Clinic.DoesNotExist:
+            raise serializers.ValidationError("Clínica não encontrada.")
 
     # ----------------------------------------------------
     # FIELD VALIDATION
@@ -66,15 +68,15 @@ class AtendimentoSerializer(serializers.ModelSerializer):
         profissional = attrs.get("profissional")
         data_hora = attrs.get("data_hora")
 
-        # ✅ Validação paciente (caso Patient tenha FK direta para clinic)
-        if paciente and hasattr(paciente, "clinic"):
+        # Validação paciente (caso Patient tenha FK direta para clinic)
+        if paciente and clinic and hasattr(paciente, "clinic"):
             if paciente.clinic != clinic:
                 raise serializers.ValidationError(
                     {"paciente": "Paciente não pertence a esta clínica."}
                 )
 
-        # ✅ Validação profissional via ProfessionalClinic
-        if profissional:
+        # Validação profissional via ProfessionalClinic
+        if profissional and clinic:
             is_linked = ProfessionalClinic.objects.filter(
                 professional=profissional,
                 membership__clinic=clinic,
@@ -86,8 +88,8 @@ class AtendimentoSerializer(serializers.ModelSerializer):
                     {"profissional": "Profissional não pertence a esta clínica."}
                 )
 
-        # ✅ Validação conflito de horário
-        if profissional and data_hora:
+        # Validação conflito de horário
+        if profissional and data_hora and clinic:
             queryset = Atendimento.objects.filter(
                 clinic=clinic,
                 profissional=profissional,
@@ -109,7 +111,8 @@ class AtendimentoSerializer(serializers.ModelSerializer):
     # ----------------------------------------------------
     def create(self, validated_data):
         clinic = self.get_user_clinic()
-        validated_data["clinic"] = clinic
+        if clinic:
+            validated_data["clinic"] = clinic
 
         try:
             return super().create(validated_data)

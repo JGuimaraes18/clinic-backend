@@ -28,26 +28,14 @@ class IsClinicAdminOrSuperuser(BasePermission):
     def has_permission(self, request, view):
         user = request.user
 
-        if not user.is_authenticated:
+        if not user or not user.is_authenticated:
             return False
 
         if user.is_superuser:
             return True
 
-        clinic_id = request.auth.get("clinic_id")
-
-        if not clinic_id:
-            return False
-
-        membership = user.memberships.filter(
-            clinic_id=clinic_id,
-            is_active=True
-        ).first()
-
-        if not membership:
-            return False
-
-        return membership.role == "ADMIN"
+        role = request.auth.get("role") if request.auth else None
+        return role == "ADMIN"
 
 
 class IsClinicUserWithRestrictions(BasePermission):
@@ -61,25 +49,13 @@ class IsClinicUserWithRestrictions(BasePermission):
     def has_permission(self, request, view):
         user = request.user
 
-        if not user.is_authenticated:
+        if not user or not user.is_authenticated:
             return False
 
         if user.is_superuser:
             return True
 
-        clinic_id = request.auth.get("clinic_id")
-        if not clinic_id:
-            return False
-
-        membership = user.memberships.filter(
-            clinic_id=clinic_id,
-            is_active=True
-        ).first()
-
-        if not membership:
-            return False
-
-        role = membership.role
+        role = request.auth.get("role") if request.auth else None
 
         # ADMIN → tudo
         if role == "ADMIN":
@@ -93,7 +69,7 @@ class IsClinicUserWithRestrictions(BasePermission):
 
         # PROFESSIONAL
         if role == "PROFESSIONAL":
-            if view.action in ["list", "retrieve"]:
+            if view.action in ["list", "retrieve", "start_attendance", "finalizar"]:
                 return True
             return False
 

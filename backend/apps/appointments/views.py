@@ -7,6 +7,7 @@ from django.db import transaction
 from .models import Atendimento
 from .serializers import AtendimentoSerializer
 
+
 class AtendimentoViewSet(ClinicSafeModelViewSet):
 
     queryset = Atendimento.objects.select_related(
@@ -20,15 +21,13 @@ class AtendimentoViewSet(ClinicSafeModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
+        user = self.request.user
+        role = self.request.auth.get("role") if self.request.auth else None
 
-        membership = self.request.user.memberships.filter(
-            is_active=True
-        ).first()
+        if role == "PROFESSIONAL":
+            return queryset.filter(profissional__user=user)
 
-        if not membership:
-            return Atendimento.objects.none()
-
-        return queryset.filter(clinic=membership.clinic)
+        return queryset
 
     @action(detail=True, methods=["post"])
     def start_attendance(self, request, pk=None):
