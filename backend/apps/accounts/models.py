@@ -29,6 +29,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    force_password_change = models.BooleanField(default=False)
 
     date_joined = models.DateTimeField(default=timezone.now)
 
@@ -45,6 +46,32 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+
+class UserSettings(models.Model):
+    THEME_CHOICES = (
+        ("light", "Light"),
+        ("dark", "Dark"),
+        ("system", "System"),
+    )
+    DENSITY_CHOICES = (
+        ("comfortable", "Comfortable"),
+        ("compact", "Compact"),
+    )
+    FONT_SIZE_CHOICES = (
+        ("small", "Small"),
+        ("medium", "Medium"),
+        ("large", "Large"),
+    )
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="settings")
+    theme = models.CharField(max_length=20, choices=THEME_CHOICES, default="system")
+    primary_color = models.CharField(max_length=20, blank=True, null=True, default="#0651ED")
+    density = models.CharField(max_length=20, choices=DENSITY_CHOICES, default="comfortable")
+    font_size = models.CharField(max_length=20, choices=FONT_SIZE_CHOICES, default="medium")
+    extra_preferences = models.JSONField(default=dict, blank=True)
+
+    def __str__(self):
+        return f"Settings: {self.user.email}"
 
 
 class Membership(models.Model):
@@ -91,3 +118,32 @@ class Membership(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.clinic.name} ({self.get_role_display()})"
+
+    def save(self, *args, **kwargs):
+        from django.core.exceptions import ValidationError
+        # Validar regra: administrador pertence a apenas uma clínica ativa
+        if self.role == "ADMIN" and self.is_active:
+            existing = Membership.objects.filter(user=self.user, is_active=True).exclude(clinic=self.clinic)
+            if existing.exists():
+                raise ValidationError("Um administrador de clínica não pode estar associado a outra clínica.")
+        
+        # Validar se o usuário já é ADMIN em alguma clínica ativa
+        existing_admin = Membership.objects.filter(user=self.user, role="ADMIN", is_active=True)
+        if self.pk:
+            existing_admin = existing_admin.exclude(pk=self.pk)
+        if existing_admin.exists() and self.clinic != existing_admin.first().clinic:
+            raise ValidationError("Este usuário já é administrador de outra clínica.")
+            
+        super().save(*args, **kwargs)
+
+
+class PasswordResetToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="password_reset_tokens")
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    used = models.BooleanField(default=False)
+    
+    def is_valid(self):
+        # 24 hours expiration
+        expiration_time = self.created_at + timezone.timedelta(hours=24)
+        return not self.used and timezone.now() <= expiration_time

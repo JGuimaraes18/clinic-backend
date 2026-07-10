@@ -47,6 +47,24 @@ class ProntuarioSerializer(serializers.ModelSerializer):
 
         return super().update(instance, validated_data)
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        
+        if request and request.user:
+            user = request.user
+            # Only the professional assigned to the appointment or explicitly authorized can view 'conteudo'
+            # If the user is the professional of the appointment, they can view
+            is_professional_of_record = (
+                instance.atendimento.profissional.user == user
+            )
+            
+            # SuperAdmin or Admin should not see contents unless they are the professional
+            if not is_professional_of_record:
+                data["conteudo"] = "Acesso restrito (Informação Sensível)"
+        
+        return data
+
 
 class AdendoProntuarioSerializer(serializers.ModelSerializer):
 
@@ -58,3 +76,18 @@ class AdendoProntuarioSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data["criado_por"] = self.context["request"].user
         return super().create(validated_data)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        
+        if request and request.user:
+            user = request.user
+            is_professional_of_record = (
+                instance.prontuario.atendimento.profissional.user == user
+            )
+            
+            if not is_professional_of_record:
+                data["conteudo"] = "Acesso restrito (Informação Sensível)"
+                
+        return data

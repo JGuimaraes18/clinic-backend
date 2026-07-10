@@ -109,6 +109,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     "core.middleware.CurrentUserMiddleware",
+    "core.middleware.ForcePasswordChangeMiddleware",
 ]
 
 DATABASES = {

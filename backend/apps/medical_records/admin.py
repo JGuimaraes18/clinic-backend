@@ -10,7 +10,42 @@ class ProntuarioAdmin(admin.ModelAdmin):
         "finalizado_por",
     )
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).none()
+
+    def has_module_permission(self, request):
+        return False
+        
+    def has_view_permission(self, request, obj=None):
+        return False
+        
+    def has_add_permission(self, request):
+        return False
+        
+    def has_change_permission(self, request, obj=None):
+        return False
+        
+    def has_delete_permission(self, request, obj=None):
+        return False
+
 
 @admin.register(AdendoProntuario)
 class AdendoAdmin(admin.ModelAdmin):
-    pass
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).none()
+
+    def has_module_permission(self, request):
+        return False
+        
+    def has_view_permission(self, request, obj=None):
+        return False
+        
+    def has_add_permission(self, request):
+        return False
+        
+    def has_change_permission(self, request, obj=None):
+        return False
+        
+    def has_delete_permission(self, request, obj=None):
+        return False

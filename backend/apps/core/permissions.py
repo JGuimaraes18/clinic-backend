@@ -15,9 +15,10 @@ class BaseClinicRolePermission(BasePermission):
         if not user or not user.is_authenticated:
             return False
 
-        # Superuser sempre tem acesso
-        if user.is_superuser:
-            return True
+        # Superuser da plataforma NÃO deve ter acesso aos endpoints operacionais da clínica
+        # a menos que o perfil dele permita de alguma outra forma, mas isso é bloqueado
+        # pois role vem do token e Superuser não deveria ter role operacional se não está numa clínica.
+
 
         # Role vem direto do token JWT
         user_role = request.auth.get("role") if request.auth else None

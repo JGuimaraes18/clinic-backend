@@ -46,3 +46,10 @@ class AuditLogAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        # O SuperAdmin NÃO deve ver os logs operacionais das clínicas
+        # Logs de clínicas possuem o campo `clinic` preenchido.
+        # Logs da plataforma (ex: Criação de Clínicas, Criação de Usuários globais) tem `clinic=None`.
+        return qs.filter(clinic__isnull=True)

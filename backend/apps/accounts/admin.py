@@ -20,6 +20,15 @@ class UserAdmin(BaseUserAdmin):
     search_fields = ("email", "first_name", "last_name")
     ordering = ("email",)
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        # SuperAdmin só pode ver outros SuperAdmins ou Staffs da plataforma.
+        # NUNCA deve ver os usuários operacionais das clínicas.
+        return qs.filter(is_superuser=True)
+
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
     # Campos para criação de usuário
     add_fieldsets = (
         (None, {
@@ -46,3 +55,21 @@ class MembershipAdmin(admin.ModelAdmin):
     list_display = ("user", "clinic", "role", "is_active", "created_at")
     list_filter = ("role", "is_active")
     search_fields = ("user__email", "clinic__name")
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).none()
+
+    def has_module_permission(self, request):
+        return False
+        
+    def has_view_permission(self, request, obj=None):
+        return False
+        
+    def has_add_permission(self, request):
+        return False
+        
+    def has_change_permission(self, request, obj=None):
+        return False
+        
+    def has_delete_permission(self, request, obj=None):
+        return False

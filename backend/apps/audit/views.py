@@ -53,3 +53,19 @@ class ClinicSafeModelViewSet(viewsets.ModelViewSet):
         )
 
         instance.delete()
+
+
+from rest_framework.viewsets import ReadOnlyModelViewSet
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
+from .models import AuditLog
+from .serializers import AuditLogSerializer
+
+class AuditLogViewSet(ReadOnlyModelViewSet):
+    serializer_class = AuditLogSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("Apenas SuperAdmins podem visualizar os logs de auditoria.")
+        return AuditLog.objects.all().select_related("user", "clinic")

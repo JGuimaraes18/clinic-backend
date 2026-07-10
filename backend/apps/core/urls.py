@@ -6,6 +6,7 @@ from apps.appointments.views import AtendimentoViewSet
 from apps.medical_records.views import ProntuarioViewSet
 from apps.professionals.views import ProfessionalViewSet
 from apps.clinics.views import ClinicViewSet
+from apps.audit.views import AuditLogViewSet
 
 router = DefaultRouter()
 
@@ -14,6 +15,7 @@ router.register(r'appointments', AtendimentoViewSet, basename='appointment')
 router.register(r'medical-records', ProntuarioViewSet, basename='medical-record')
 router.register(r'professionals', ProfessionalViewSet, basename='professional')
 router.register(r'clinics', ClinicViewSet, basename='clinic')
+router.register(r'audit-logs', AuditLogViewSet, basename='audit-log')
 
 urlpatterns = [
     path('', include(router.urls)),

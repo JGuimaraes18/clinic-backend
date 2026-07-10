@@ -16,11 +16,8 @@ class ClinicSafeModelViewSet(viewsets.ModelViewSet):
 
         clinic_id = self.request.auth.get("clinic_id") if self.request.auth else None
 
-        if user.is_superuser and not clinic_id:
-            return None
-
         if not clinic_id:
-            raise PermissionDenied("Usuário não possui clínica ativa no token.")
+            raise PermissionDenied("Acesso negado: Usuário não possui clínica ativa no token.")
 
         return clinic_id
 
@@ -30,11 +27,11 @@ class ClinicSafeModelViewSet(viewsets.ModelViewSet):
 
         clinic_id = self.get_user_clinic_id()
 
-        if clinic_id is None:
-            return None
-
         try:
-            return Clinic.objects.get(id=clinic_id)
+            clinic = Clinic.objects.get(id=clinic_id)
+            if not clinic.is_active:
+                raise PermissionDenied("Acesso negado: Esta clínica está inativa.")
+            return clinic
         except Clinic.DoesNotExist:
             raise PermissionDenied("Clínica não encontrada.")
 
@@ -43,13 +40,12 @@ class ClinicSafeModelViewSet(viewsets.ModelViewSet):
         model = queryset.model
         user = self.request.user
 
-        # Superuser vê tudo
-        if user.is_superuser:
-            if hasattr(model, "is_deleted"):
-                return queryset.filter(is_deleted=False)
-            return queryset
-
         clinic_id = self.get_user_clinic_id()
+
+        from apps.clinics.models import Clinic
+        if not Clinic.objects.filter(id=clinic_id, is_active=True).exists():
+            raise PermissionDenied("Acesso negado: Esta clínica está inativa.")
+
 
         # Modelo possui campo clinic direto
         if hasattr(model, "clinic"):
@@ -81,8 +77,6 @@ class ClinicSafeModelViewSet(viewsets.ModelViewSet):
         clinic = self.get_user_clinic()
 
         if hasattr(model, "clinic"):
-            if not clinic:
-                raise PermissionDenied("Superusuário deve ter uma clínica no token para criar este registro (faça login na clínica).")
             serializer.save(clinic=clinic)
         else:
             serializer.save()
@@ -98,7 +92,7 @@ class ClinicSafeModelViewSet(viewsets.ModelViewSet):
 
         log_audit_event(
             user=self.request.user,
-            clinic=self.get_user_clinic() if not self.request.user.is_superuser else None,
+            clinic=self.get_user_clinic(),
             action="DELETE",
             model_name=instance.__class__.__name__,
             object_id=str(instance.pk),

@@ -29,6 +29,8 @@ EXCLUDED_APPS = [
 ]
 
 
+from django.db.models.fields.files import FieldFile
+
 def serialize_value(value):
     if isinstance(value, (datetime.datetime, datetime.date)):
         return value.isoformat()
@@ -38,6 +40,9 @@ def serialize_value(value):
 
     if isinstance(value, uuid.UUID):
         return str(value)
+        
+    if isinstance(value, FieldFile):
+        return value.name if value else None
 
     return value
 

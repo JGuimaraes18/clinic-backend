@@ -21,6 +21,7 @@ class MembershipSerializer(serializers.Serializer):
 class UserMeSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     memberships = serializers.SerializerMethodField()
+    settings = serializers.SerializerMethodField()
 
     def get_full_name(self, obj):
         return f"{obj.first_name} {obj.last_name}".strip()
@@ -34,11 +35,23 @@ class UserMeSerializer(serializers.ModelSerializer):
                     "id": m.clinic.id,
                     "name": m.clinic.name,
                     "slug": m.clinic.slug,
+                    "is_active": m.clinic.is_active,
                 },
                 "role": m.role,
             }
             for m in memberships
         ]
+        
+    def get_settings(self, obj):
+        if hasattr(obj, "settings"):
+            return {
+                "theme": obj.settings.theme,
+                "primary_color": obj.settings.primary_color,
+                "density": obj.settings.density,
+                "font_size": obj.settings.font_size,
+                "extra_preferences": obj.settings.extra_preferences,
+            }
+        return {"theme": "system", "primary_color": "#0651ED", "density": "comfortable", "font_size": "medium", "extra_preferences": {}}
 
     class Meta:
         model = User
@@ -49,7 +62,9 @@ class UserMeSerializer(serializers.ModelSerializer):
             "last_name",
             "full_name",
             "is_superuser",
+            "force_password_change",
             "memberships",
+            "settings",
         ]
 
 
@@ -67,18 +82,15 @@ class LoginSerializer(serializers.Serializer):
 
         if not user:
             raise serializers.ValidationError("Usuário ou senha inválidos.")
+            
+        if not user.is_active:
+            raise serializers.ValidationError("Usuário inativo.")
 
         if user.is_superuser:
             data["user"] = user
-            if clinic_slug:
-                try:
-                    clinic = Clinic.objects.get(slug=clinic_slug)
-                    data["clinic"] = clinic
-                    data["role"] = "SUPERUSER"
-                except Clinic.DoesNotExist:
-                    raise serializers.ValidationError("Clínica não encontrada.")
-            else:
-                data["role"] = "SUPERUSER"
+            data["role"] = "SUPERUSER"
+            # Superadmin loga apenas na plataforma, NUNCA em uma clínica específica.
+            data["clinic"] = None 
             return data
 
         if not clinic_slug:
@@ -88,6 +100,9 @@ class LoginSerializer(serializers.Serializer):
             clinic = Clinic.objects.get(slug=clinic_slug)
         except Clinic.DoesNotExist:
             raise serializers.ValidationError("Clínica não encontrada.")
+            
+        if not clinic.is_active:
+            raise serializers.ValidationError("Esta clínica está desativada. Entre em contato com o suporte.")
 
         membership = Membership.objects.filter(
             user=user,
@@ -127,6 +142,19 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "role",
         ]
 
+    def validate(self, attrs):
+        role = attrs.get("role")
+        email = attrs.get("email")
+        if role == "ADMIN":
+            user = User.objects.filter(email=email).first()
+            if user:
+                existing = Membership.objects.filter(user=user, is_active=True)
+                if existing.exists():
+                    raise serializers.ValidationError(
+                        {"role": "Um administrador de clínica não pode estar associado a outra clínica."}
+                    )
+        return attrs
+
     def create(self, validated_data):
         password = validated_data.pop("password")
         clinic_id = validated_data.pop("clinic_id", None)
@@ -141,27 +169,28 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
         if request.user.is_superuser:
             if not clinic_id:
-                raise serializers.ValidationError("Clínica é obrigatória.")
-
-            if not role:
-                raise serializers.ValidationError("Perfil é obrigatório.")
-
-            Membership.objects.create(
-                user=user,
-                clinic_id=clinic_id,
-                role=role,
-            )
-
+                raise serializers.ValidationError("A clínica (clinic_id) é obrigatória para o SuperAdmin cadastrar um usuário.")
         else:
-            active_clinic_id = request.auth.get("clinic_id")
+            clinic_id = request.auth.get("clinic_id") if request.auth else None
+            if not clinic_id:
+                raise serializers.ValidationError("Não foi possível identificar a clínica ativa.")
 
-            Membership.objects.create(
-                user=user,
-                clinic_id=active_clinic_id,
-                role=role or "ATTENDANT",
-            )
+        from apps.clinics.models import Clinic
+        try:
+            clinic = Clinic.objects.get(id=clinic_id)
+            if not clinic.is_active:
+                raise serializers.ValidationError("Esta clínica está desativada.")
+        except Clinic.DoesNotExist:
+            raise serializers.ValidationError("Clínica não encontrada.")
+
+        Membership.objects.create(
+            user=user,
+            clinic_id=clinic_id,
+            role=role or "ATTENDANT",
+        )
 
         return user
+
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
@@ -187,6 +216,22 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             "clinic_id",
         ]
 
+    def validate(self, attrs):
+        role = attrs.get("role")
+        clinic_id = attrs.get("clinic_id")
+        if role == "ADMIN" and self.instance:
+            existing = Membership.objects.filter(user=self.instance, is_active=True)
+            if not clinic_id:
+                active_membership = self.instance.memberships.filter(is_active=True).first()
+                clinic_id = active_membership.clinic_id if active_membership else None
+            
+            other_memberships = existing.exclude(clinic_id=clinic_id)
+            if other_memberships.exists():
+                raise serializers.ValidationError(
+                    {"role": "Um administrador de clínica não pode estar associado a outra clínica."}
+                )
+        return attrs
+
     def update(self, instance, validated_data):
         password = validated_data.pop("password", None)
         role = validated_data.pop("role", None)
@@ -202,27 +247,27 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
         instance.save()
 
-        membership = instance.memberships.filter(is_active=True).first()
-
+        # Update or create membership
         if request.user.is_superuser:
-            if clinic_id:
-                clinic_exists = Clinic.objects.filter(id=clinic_id).exists()
-                if not clinic_exists:
-                    raise serializers.ValidationError("Clínica inválida.")
-
-                if membership:
+            membership = instance.memberships.first()
+            if membership:
+                if clinic_id:
                     membership.clinic_id = clinic_id
-                else:
-                    membership = Membership.objects.create(
+                if role:
+                    membership.role = role
+                membership.save()
+            else:
+                if clinic_id:
+                    Membership.objects.create(
                         user=instance,
                         clinic_id=clinic_id,
-                        role=role or Membership.ROLE_CHOICES[0][0],
+                        role=role or "ADMIN"
                     )
-
-        if role and membership:
-            membership.role = role
-
-        if membership:
-            membership.save()
+        else:
+            membership = instance.memberships.filter(is_active=True).first()
+            if role and membership:
+                membership.role = role
+            if membership:
+                membership.save()
 
         return instance

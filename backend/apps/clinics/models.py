@@ -10,6 +10,14 @@ class Clinic(models.Model):
     phone = models.CharField(max_length=20)
     email = models.EmailField()
     created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+    
+    # Customization fields
+    logo = models.FileField(upload_to="clinic_media/logos/", null=True, blank=True)
+    banner = models.FileField(upload_to="clinic_media/banners/", null=True, blank=True)
+    theme = models.CharField(max_length=20, default="SYSTEM")
+    primary_color = models.CharField(max_length=20, default="#0651ED")
+    secondary_color = models.CharField(max_length=20, default="#4F46E5")
 
     def save(self, *args, **kwargs):
         if not self.slug:

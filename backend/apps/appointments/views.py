@@ -1,4 +1,4 @@
-from apps.accounts.permissions import IsClinicUserWithRestrictions
+from apps.accounts.permissions import IsClinicUserWithRestrictions, IsAuthenticatedAndHasClinic
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from apps.core.views import ClinicSafeModelViewSet
@@ -17,7 +17,16 @@ class AtendimentoViewSet(ClinicSafeModelViewSet):
     )
 
     serializer_class = AtendimentoSerializer
-    permission_classes = [IsClinicUserWithRestrictions]
+
+    def get_permissions(self):
+        # Override to allow PROFESSIONAL to update/partial_update
+        if self.action in ["update", "partial_update"]:
+            user = self.request.user
+            role = self.request.auth.get("role") if self.request.auth else None
+            if role == "PROFESSIONAL":
+                return [IsAuthenticatedAndHasClinic()]
+        return [IsClinicUserWithRestrictions()]
+
 
     def get_queryset(self):
         queryset = super().get_queryset()
