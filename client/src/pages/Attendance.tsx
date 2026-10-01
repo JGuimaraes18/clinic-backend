@@ -104,14 +104,14 @@ export default function Attendance() {
           <div className="flex gap-4">
             <button
               onClick={handleBack}
-              class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full"
+              className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full"
             >
               Voltar
             </button>
 
             <button
               onClick={handleSave}
-              class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full"
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full"
 
             >
               Salvar Rascunho
@@ -119,7 +119,7 @@ export default function Attendance() {
 
             <button
               onClick={handleClose}
-              class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-full"
+              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-full"
             >
               Finalizar Atendimento
             </button>

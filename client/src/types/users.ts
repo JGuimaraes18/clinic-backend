@@ -43,7 +43,7 @@ export interface UserErrors {
   email?: string;
   first_name?: string;
   last_name?: string;
-  clinic?: string;
+  clinic_id?: string;
   password?: string;
   role?: string;
 }

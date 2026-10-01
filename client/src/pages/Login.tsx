@@ -171,7 +171,7 @@ export default function Login() {
             disabled={isSubmitting}
             className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary/90 transition disabled:opacity-50"
           >
-            {isSubmittbmittbmitting ? "Entrando..." : "Entrar"}
+            {isSubmitting ? "Entrando..." : "Entrar"}
           </button>
           
           <div className="text-center pt-2">

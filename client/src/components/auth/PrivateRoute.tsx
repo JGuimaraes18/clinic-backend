@@ -6,7 +6,7 @@ interface PrivateRouteProps {
 }
 
 export default function PrivateRoute({ allowedRoles }: PrivateRouteProps) {
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
   const location = useLocation();
 
   // 🔄 Enquanto valida token
@@ -31,7 +31,7 @@ export default function PrivateRoute({ allowedRoles }: PrivateRouteProps) {
   }
 
   // 🔐 Restrição por role (opcional)
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (allowedRoles && role && !allowedRoles.includes(role)) {
     return <Navigate to="/" replace />;
   }
 

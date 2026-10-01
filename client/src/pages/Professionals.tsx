@@ -26,7 +26,7 @@ export default function Professionals() {
     is_active: true,
   });
 
-  const [errors, setErrors] = useState<Partial<ProfessionalForm>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof ProfessionalForm, string>>>({});
 
   const clinicId = Number(localStorage.getItem("clinic_id"));
 
@@ -55,7 +55,7 @@ export default function Professionals() {
 
 
   function validate() {
-    const newErrors: Partial<ProfessionalForm> = {};
+    const newErrors: Partial<Record<keyof ProfessionalForm, string>> = {};
 
     if (!form.user)
       newErrors.user  = "Usuário é obrigatório";

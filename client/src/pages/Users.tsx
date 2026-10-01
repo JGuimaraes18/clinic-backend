@@ -4,7 +4,7 @@ import { getUsers, createUser, updateUser } from "@/services/authService";
 import { getClinics } from "@/services/clinicService";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFetch } from "@/hooks/useFetch";
-import { User, UserForm, UserErrors } from "@/types/users";
+import { User, UserForm, UserErrors, UserRole } from "@/types/users";
 
 export default function Users() {
   const { data, loading, error } = useFetch<User[]>(getUsers);
@@ -12,13 +12,12 @@ export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [errors, setErrors] = useState<Partial<UserForm>>({});
+  const [errors, setErrors] = useState<UserErrors>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { user: loggedUser } = useAuth();
   const [clinics, setClinics] = useState<{ id: number; name: string }[]>([]);
 
   const [form, setForm] = useState<UserForm>({
-    username: "",
     first_name: "",
     last_name: "",
     email: "",
@@ -55,9 +54,6 @@ export default function Users() {
   function validate() {
     const newErrors: UserErrors = {};
 
-    if (!form.username.trim())
-      newErrors.username = "Username obrigatório";
-
     if (!form.email.trim())
       newErrors.email = "Email obrigatório";
     else if (!emailRegex.test(form.email))
@@ -84,7 +80,6 @@ export default function Users() {
     setEditingId(null);
     setErrors({});
     setForm({
-      username: "",
       first_name: "",
       last_name: "",
       email: "",
@@ -128,7 +123,6 @@ export default function Users() {
     const membership = user.memberships?.[0];
 
     setForm({
-      username: user.username,
       first_name: user.first_name,
       last_name: user.last_name,
       email: user.email,
@@ -193,7 +187,6 @@ export default function Users() {
               <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
                 <tr>
                   <th className="px-6 py-3 text-left">Nome</th>
-                  <th className="px-6 py-3 text-left">Username</th>
                   <th className="px-6 py-3 text-left">Clínica</th>
                   <th className="px-6 py-3 text-left">Perfil</th>
                   <th className="px-6 py-3 text-left">Email</th>
@@ -218,11 +211,6 @@ export default function Users() {
                         {u.full_name ||
                           `${u.first_name} ${u.last_name}`}
                       </td>
-
-                      <td className="px-6 py-4 text-gray-600">
-                        {u.username}
-                      </td>
-
 
                       <td className="px-6 py-4 text-gray-600">
                         {u.memberships && u.memberships.length > 0
@@ -265,17 +253,6 @@ export default function Users() {
         title={editingId ? "Editar Usuário" : "Novo Usuário"}
       >
         <div className="p-6 space-y-4">
-
-          <input
-            value={form.username}
-            onChange={(e) =>
-              setForm({ ...form, username: e.target.value })
-            }
-            placeholder="Usuário"
-            className={`w-full border p-3 rounded-lg ${
-              errors.username ? "border-red-500" : "border-gray-300"
-            }`}
-          />
 
           <input
             value={form.email}
@@ -323,7 +300,7 @@ export default function Users() {
           <select
             value={form.role}
             onChange={(e) =>
-              setForm({ ...form, role: e.target.value })
+              setForm({ ...form, role: e.target.value as UserRole })
             }
             className="w-full border p-2 rounded"
           >

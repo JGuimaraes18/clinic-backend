@@ -27,5 +27,6 @@ export interface AppointmentForm {
 }
 
 export interface StartAttendanceResponse {
-  record_id: number;
+  prontuario_id: number;
+  atendimento_id: number;
 }

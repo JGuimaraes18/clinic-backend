@@ -1,5 +1,10 @@
 import api from "./api";
-import { Clinic, ClinicForm } from "@/types/clinic";
+import {
+  Clinic,
+  ClinicCreateResponse,
+  ClinicForm,
+  ClinicResetPasswordResponse,
+} from "@/types/clinic";
 
 // ==============================
 // GET ALL
@@ -22,7 +27,7 @@ export async function getClinic(id: number): Promise<Clinic> {
 // ==============================
 export async function createClinic(
   data: ClinicForm
-): Promise<Clinic> {
+): Promise<ClinicCreateResponse> {
   const response = await api.post("/api/clinics/", data);
   return response.data;
 }
@@ -61,7 +66,7 @@ export async function toggleClinicActive(
 // ==============================
 export async function resetClinicAdminPassword(
   id: number
-): Promise<{ detail: string; temporary_password: string; admin_email: string }> {
+): Promise<ClinicResetPasswordResponse> {
   const response = await api.post(`/api/clinics/${id}/reset-admin-password/`);
   return response.data;
 }

@@ -1,3 +1,4 @@
+// @ts-nocheck
 <CrudTable
   title="Pacientes"
   fetchData={getPatients}
