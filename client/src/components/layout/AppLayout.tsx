@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Activity, Calendar, Users, Stethoscope, Menu, X, LogOut, Settings, FileText } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
+import { useIsMobile } from "@/hooks/useMobile";
 import { getClinic } from "@/services/clinicService";
 import { Clinic } from "@/types/clinic";
 
 export default function AppLayout() {
-  const location = useLocation();
-  const navigate = useNavigate();
+    const navigate = useNavigate();
   const { user, logout, isProfessional, isSuperadmin, clinicId } = useAuth();
+  const isMobile = useIsMobile();
   
   const [clinicConfig, setClinicConfig] = useState<Clinic | null>(null);
 
@@ -59,16 +60,6 @@ export default function AppLayout() {
     }
   }, [clinicId, user?.settings]);
 
-  useEffect(() => {
-    if (user?.force_password_change && location.pathname !== "/force-password-change") {
-      navigate("/force-password-change", { replace: true });
-    }
-  }, [user, location.pathname, navigate]);
-
-  // detecta mobile
-  const [isMobile, setIsMobile] = useState(false);
-
-  // drawer mobile
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // colapso desktop
@@ -94,13 +85,6 @@ export default function AppLayout() {
   ];
 
   const menu = isSuperadmin ? platformMenu : clinicalMenu;
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
 
   function handleLogout() {
     logout();
@@ -167,36 +151,39 @@ export default function AppLayout() {
 
         {/* MENU */}
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
-          {menu.map(({ path, label, icon: Icon }) => {
-            const isActive = location.pathname === path;
-            return (
-              <button
-                key={path}
-                onClick={() => {
-                  navigate(path);
-                  if (isMobile) setSidebarOpen(false);
-                }}
-                className={`
-                  w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group
-                  ${isActive
+          {menu.map(({ path, label, icon: Icon }) => (
+            <NavLink
+              end={path === "/"}
+              key={path}
+              to={path}
+              onClick={() => {
+                if (isMobile) setSidebarOpen(false);
+              }}
+              className={({ isActive }) =>
+                `w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group ${
+                  isActive
                     ? "bg-gradient-to-r from-primary/10 to-primary/5 text-primary font-semibold shadow-sm"
                     : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-                  }
-                `}
-              >
-                <Icon 
-                  size={20} 
-                  className={`transition-transform duration-200 ${isActive ? "scale-110" : "group-hover:scale-110"}`}
-                  strokeWidth={isActive ? 2.5 : 2} 
-                />
-                {(!sidebarCollapsed || isMobile) && (
-                  <span className="text-sm">{label}</span>
-                )}
-              </button>
-            );
-          })}
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <Icon
+                    size={20}
+                    className={`transition-transform duration-200 ${
+                      isActive ? "scale-110" : "group-hover:scale-110"
+                    }`}
+                    strokeWidth={isActive ? 2.5 : 2}
+                  />
+                  {(!sidebarCollapsed || isMobile) && (
+                    <span className="text-sm">{label}</span>
+                  )}
+                </>
+              )}
+            </NavLink>
+          ))}
         </nav>
-
         {/* LOGOUT */}
         <div className="p-4 border-t border-gray-100">
           <button

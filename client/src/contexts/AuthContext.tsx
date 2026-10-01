@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { getCurrentUser, login as loginService, updateUserSettings } from "@/services/authService";
 import { User, UserRole, UserSettings } from "@/types/users";
 
@@ -131,6 +131,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
 
+  const isAdmin = useMemo(() => role === "ADMIN", [role]);
+  const isProfessional = useMemo(() => role === "PROFESSIONAL", [role]);
+  const isAttendant = useMemo(() => role === "ATTENDANT", [role]);
+  const isSuperadmin = useMemo(
+    () => role === "SUPERUSER" || user?.is_superuser === true,
+    [role, user?.is_superuser]
+  );
+
   return (
     <AuthContext.Provider
       value={{
@@ -140,10 +148,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         login,
         logout,
-        isAdmin: role === "ADMIN",
-        isProfessional: role === "PROFESSIONAL",
-        isAttendant: role === "ATTENDANT",
-        isSuperadmin: role === "SUPERUSER" || user?.is_superuser === true,
+        isAdmin,
+        isProfessional,
+        isAttendant,
+        isSuperadmin,
         updateSettings,
       }}
     >

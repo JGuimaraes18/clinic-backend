@@ -1,21 +1,33 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Activity, Lock, Mail, Hospital } from "lucide-react";
+import { useForm } from "react-hook-form";
 import { useAuth } from "@/contexts/AuthContext";
+
+type LoginFormValues = {
+  clinicSlug: string;
+  email: string;
+  password: string;
+};
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
-
-  const [clinicSlug, setClinicSlug] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormValues>({
+    defaultValues: {
+      clinicSlug: "",
+      email: "",
+      password: "",
+    },
+  });
+
+  async function handleLogin({ clinicSlug, email, password }: LoginFormValues) {
     setError(null);
 
     try {
@@ -27,8 +39,6 @@ export default function Login() {
         err?.response?.data?.detail ||
         "Usuário, senha ou clínica inválidos.";
       setError(msg);
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -48,11 +58,11 @@ export default function Login() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleLogin} className="space-y-5">
+        <form onSubmit={handleSubmit(handleLogin)} className="space-y-5">
 
           {/* Clínica */}
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-foreground">
+            <label htmlFor="clinic-slug" className="text-sm font-semibold text-foreground">
               Clínica
             </label>
             <div className="relative">
@@ -63,13 +73,21 @@ export default function Login() {
               <input
                 id="clinic-slug"
                 type="text"
-                value={clinicSlug}
-                onChange={(e) => setClinicSlug(e.target.value)}
+                {...register("clinicSlug", {
+                  required: "Clínica é obrigatória.",
+                })}
+                aria-invalid={errors.clinicSlug ? "true" : "false"}
+                aria-describedby={errors.clinicSlug ? "clinic-slug-error" : undefined}
                 className="w-full border border-border rounded-lg pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
                 placeholder="slug-da-clinica"
                 autoComplete="organization"
               />
             </div>
+            {errors.clinicSlug && (
+              <p id="clinic-slug-error" className="text-xs text-destructive">
+                {errors.clinicSlug.message}
+              </p>
+            )}
             <p className="text-xs text-muted-foreground">
               Informe o identificador único da sua clínica
             </p>
@@ -77,7 +95,7 @@ export default function Login() {
 
           {/* Email */}
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-foreground">
+            <label htmlFor="email" className="text-sm font-semibold text-foreground">
               E-mail
             </label>
             <div className="relative">
@@ -88,19 +106,30 @@ export default function Login() {
               <input
                 id="email"
                 type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                {...register("email", {
+                  required: "E-mail é obrigatório.",
+                  pattern: {
+                    value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                    message: "Use um e-mail válido.",
+                  },
+                })}
+                aria-invalid={errors.email ? "true" : "false"}
+                aria-describedby={errors.email ? "email-error" : undefined}
                 className="w-full border border-border rounded-lg pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
                 placeholder="seu@email.com"
                 autoComplete="email"
               />
             </div>
+            {errors.email && (
+              <p id="email-error" className="text-xs text-destructive">
+                {errors.email.message}
+              </p>
+            )}
           </div>
 
           {/* Senha */}
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-foreground">
+            <label htmlFor="password" className="text-sm font-semibold text-foreground">
               Senha
             </label>
             <div className="relative">
@@ -111,14 +140,21 @@ export default function Login() {
               <input
                 id="password"
                 type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                {...register("password", {
+                  required: "Senha é obrigatória.",
+                })}
+                aria-invalid={errors.password ? "true" : "false"}
+                aria-describedby={errors.password ? "password-error" : undefined}
                 className="w-full border border-border rounded-lg pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
                 placeholder="••••••••"
                 autoComplete="current-password"
               />
             </div>
+            {errors.password && (
+              <p id="password-error" className="text-xs text-destructive">
+                {errors.password.message}
+              </p>
+            )}
           </div>
 
           {/* Erro */}
@@ -132,10 +168,10 @@ export default function Login() {
           <button
             id="login-submit"
             type="submit"
-            disabled={loading}
+            disabled={isSubmitting}
             className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary/90 transition disabled:opacity-50"
           >
-            {loading ? "Entrando..." : "Entrar"}
+            {isSubmittbmittbmitting ? "Entrando..." : "Entrar"}
           </button>
           
           <div className="text-center pt-2">

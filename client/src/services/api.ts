@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { type AxiosRequestConfig } from "axios";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -47,7 +47,7 @@ function processQueue(error: any, token: string | null = null) {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
 
     if (!error.response) {
       return Promise.reject(error);
@@ -117,7 +117,7 @@ function logoutAndRedirect() {
   localStorage.removeItem("refresh_token");
 
   // Redireciona fora do React
-  window.location.href = "/login";
+  window.location.replace("/login");
 }
 
 export default api;
