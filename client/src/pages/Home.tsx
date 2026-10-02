@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAppointments } from "@/services/appointmentsService";
 import { getPatients } from "@/services/patientService";
@@ -6,6 +7,7 @@ import { getProfessionals } from "@/services/professionalService";
 import { Appointment } from "@/types/appointment";
 import { Patient } from "@/types/patient";
 import { Professional } from "@/types/professional";
+import { getApiErrorMessage } from "@/utils/apiError";
 import { 
   Card, 
   CardContent, 
@@ -46,7 +48,9 @@ export default function Home() {
         setPatients(pats);
         setProfessionals(profs);
       } catch (error) {
-        console.error("Failed to load dashboard data", error);
+        toast.error(
+          getApiErrorMessage(error, "Erro ao carregar o painel.")
+        );
       } finally {
         setLoading(false);
       }

@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
   getMedicalRecordById,
   updateMedicalRecord,
   closeMedicalRecord,
   getMedicalHistory,
 } from "@/services/medicalRecordService";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 export default function Attendance() {
   const { id } = useParams();
@@ -16,31 +18,79 @@ export default function Attendance() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    let active = true;
+
     async function load() {
-      if (!id) return;
+      if (!id) {
+        if (active) {
+          setLoadError("Atendimento não informado.");
+          setLoading(false);
+        }
+        return;
+      }
 
-      const data = await getMedicalRecordById(Number(id));
-      setRecord(data);
-      setConteudo(data.conteudo);
+      if (active) {
+        setLoadError(null);
+        setLoading(true);
+      }
 
-      const historyData = await getMedicalHistory(Number(id));
-      setHistory(historyData);
+      try {
+        try {
+          const data = await getMedicalRecordById(Number(id));
+          if (active) {
+            setRecord(data);
+            setConteudo(data.conteudo);
+          }
+        } catch (e) {
+          if (active) {
+            setLoadError(
+              getApiErrorMessage(e, "Erro ao carregar o atendimento.")
+            );
+          }
+          return;
+        }
+
+        try {
+          const historyData = await getMedicalHistory(Number(id));
+          if (active) setHistory(historyData);
+        } catch (e) {
+          if (active) {
+            toast.error(
+              getApiErrorMessage(e, "Erro ao carregar o histórico do paciente.")
+            );
+          }
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
     }
 
     load();
+
+    return () => {
+      active = false;
+    };
   }, [id]);
 
   async function handleSave() {
     if (!record) return;
 
-    const updated = await updateMedicalRecord(record.id, {
-      conteudo,
-    });
+    try {
+      const updated = await updateMedicalRecord(record.id, {
+        conteudo,
+      });
 
-    setRecord(updated);
-    setAlertMessage("Salvo como rascunho.");
+      setRecord(updated);
+      setAlertMessage("Salvo como rascunho.");
+    } catch (e) {
+      toast.error(
+        getApiErrorMessage(e, "Erro ao salvar o rascunho. Tente novamente.")
+      );
+    }
   }
 
   async function handleClose() {
@@ -51,18 +101,40 @@ export default function Attendance() {
       return;
     }
 
-    await updateMedicalRecord(record.id, { conteudo });
-    await closeMedicalRecord(record.id);
+    try {
+      await updateMedicalRecord(record.id, { conteudo });
+      await closeMedicalRecord(record.id);
 
-    setSuccessMessage("Atendimento finalizado com sucesso!");    
-    
-    setTimeout(() => {
-      navigate("/agendamentos");
-    }, 1500);
+      setSuccessMessage("Atendimento finalizado com sucesso!");
+
+      setTimeout(() => {
+        navigate("/agendamentos");
+      }, 1500);
+    } catch (e) {
+      toast.error(
+        getApiErrorMessage(e, "Erro ao finalizar o atendimento.")
+      );
+    }
   }
 
   async function handleBack() {
     navigate("/agendamentos");
+  }
+
+  if (loading && !record) return <div className="p-6">Carregando...</div>;
+
+  if (loadError && !record) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto space-y-4 text-center">
+        <p className="text-red-600">{loadError}</p>
+        <button
+          onClick={handleBack}
+          className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-full"
+        >
+          Voltar
+        </button>
+      </div>
+    );
   }
 
   if (!record) return <div className="p-6">Carregando...</div>;

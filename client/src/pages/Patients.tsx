@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import Modal from "@/components/modal/Modal";
 import { getPatients, createPatient, updatePatient } from "@/services/patientService";
 import { useFetch } from "@/hooks/useFetch";
 import { formatCPF, formatPhone, formatDateBR, calculateAge } from "@/utils/format";
+import { getApiErrorMessage } from "@/utils/apiError";
 import { Patient, PatientForm } from "@/types/patient";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -87,7 +89,7 @@ export default function Patients() {
 
       handleClose();
     } catch (err) {
-      console.error(err);
+      toast.error(getApiErrorMessage(err, "Erro ao salvar o paciente."));
     }
   }
 

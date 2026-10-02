@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "@/services/api";
 import { Search, Filter, Calendar, Info, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 interface AuditLog {
   id: number;
@@ -33,9 +34,10 @@ export default function AuditLogs() {
       try {
         const { data } = await api.get("/api/audit-logs/");
         setLogs(data);
-      } catch (err: any) {
-        console.error(err);
-        toast.error("Erro ao carregar logs de auditoria.");
+      } catch (err) {
+        toast.error(
+          getApiErrorMessage(err, "Erro ao carregar logs de auditoria.")
+        );
       } finally {
         setLoading(false);
       }

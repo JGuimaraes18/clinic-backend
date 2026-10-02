@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import Modal from "@/components/modal/Modal";
 import { getUsers, createUser, updateUser } from "@/services/authService";
 import { getClinics } from "@/services/clinicService";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFetch } from "@/hooks/useFetch";
 import { User, UserForm, UserErrors, UserRole } from "@/types/users";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 export default function Users() {
   const { data, loading, error } = useFetch<User[]>(getUsers);
@@ -113,7 +115,7 @@ export default function Users() {
       setTimeout(() => setSuccessMessage(null), 3000);
 
     } catch (err) {
-      console.error(err);
+      toast.error(getApiErrorMessage(err, "Erro ao salvar o usuário."));
     }
   }
 

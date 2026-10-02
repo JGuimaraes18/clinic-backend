@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import Modal from "@/components/modal/Modal";
 import { useFetch } from "@/hooks/useFetch";
 import { useAuth } from "@/contexts/AuthContext";
 import { getProfessionals, createProfessional, updateProfessional } from "@/services/professionalService";
 import { getUsers } from "@/services/authService";
 import { Professional, ProfessionalForm } from "@/types/professional";
+import { getApiErrorMessage } from "@/utils/apiError";
 import { User } from "@/types/users";
 
 export default function Professionals() {
@@ -46,7 +48,9 @@ export default function Professionals() {
         const res = await getUsers();
         setUsers(res);
       } catch (err) {
-        console.error("Erro ao carregar users", err);
+        toast.error(
+          getApiErrorMessage(err, "Erro ao carregar a lista de usuários.")
+        );
       }
     }
 
@@ -120,7 +124,9 @@ export default function Professionals() {
 
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      console.error(err);
+      toast.error(
+        getApiErrorMessage(err, "Erro ao salvar o profissional.")
+      );
     }
   }
 

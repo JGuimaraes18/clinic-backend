@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Activity, Calendar, Users, Stethoscope, Menu, X, LogOut, Settings, FileText } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 
 import { useIsMobile } from "@/hooks/useMobile";
 import { getClinic } from "@/services/clinicService";
 import { Clinic } from "@/types/clinic";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 export default function AppLayout() {
     const navigate = useNavigate();
@@ -56,7 +58,11 @@ export default function AppLayout() {
         if (config.secondary_color) {
           document.documentElement.style.setProperty('--secondary', config.secondary_color);
         }
-      }).catch(console.error);
+      }).catch((err) => {
+        toast.error(
+          getApiErrorMessage(err, "Erro ao carregar a identidade visual da clínica.")
+        );
+      });
     }
   }, [clinicId, user?.settings]);
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sun, Moon, Laptop, Palette, Layout, Type, Save } from "lucide-react";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 const COLORS = [
   { name: "Sálvia", hex: "#6B9E7F" },
@@ -46,8 +47,9 @@ export default function Settings() {
       });
       toast.success("Configurações salvas com sucesso!");
     } catch (error) {
-      console.error(error);
-      toast.error("Erro ao salvar configurações.");
+      toast.error(
+        getApiErrorMessage(error, "Erro ao salvar configurações.")
+      );
     } finally {
       setSaving(false);
     }

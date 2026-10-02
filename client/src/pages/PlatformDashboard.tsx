@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getClinics } from "@/services/clinicService";
+import { getApiErrorMessage } from "@/utils/apiError";
 import { Clinic } from "@/types/clinic";
 import {
   Card,
@@ -30,7 +32,9 @@ export default function PlatformDashboard() {
         const data = await getClinics();
         setClinics(data);
       } catch (error) {
-        console.error("Failed to load platform data", error);
+        toast.error(
+          getApiErrorMessage(error, "Erro ao carregar as clínicas da plataforma.")
+        );
       } finally {
         setLoading(false);
       }

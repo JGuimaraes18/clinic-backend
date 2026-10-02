@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { useFetch } from "@/hooks/useFetch";
 
 import {
@@ -16,6 +17,7 @@ import { getPatients } from "@/services/patientService";
 import { getProfessionals } from "@/services/professionalService";
 
 import { Appointment, AppointmentForm } from "@/types/appointment";
+import { getApiErrorMessage } from "@/utils/apiError";
 import { useAuth } from "@/contexts/AuthContext";
 
 function getNowForInput() {
@@ -78,8 +80,7 @@ function getStatusLabel(status: string) {
 }
 
 export default function AppointmentsCalendar() {
-  const { data } =
-    useFetch<Appointment[]>(getAppointments);
+  const { data, error } = useFetch<Appointment[]>(getAppointments);
 
   const { data: patientsData } = useFetch(getPatients);
   const { data: professionalsData } = useFetch(getProfessionals);
@@ -267,7 +268,7 @@ export default function AppointmentsCalendar() {
 
       handleClose();
     } catch (err) {
-      console.error(err);
+      toast.error(getApiErrorMessage(err, "Erro ao salvar o agendamento."));
     } finally {
       setSaving(false);
       setSubmitted(false);
@@ -308,7 +309,9 @@ export default function AppointmentsCalendar() {
 
       navigate(`/atendimento/${res.prontuario_id}`);
     } catch (err) {
-      console.error(err);
+      toast.error(
+        getApiErrorMessage(err, "Erro ao iniciar o atendimento.")
+      );
     }
   }
 
@@ -317,7 +320,9 @@ export default function AppointmentsCalendar() {
       const record = await getMedicalRecordByAppointment(appointmentId);
       navigate(`/atendimento/${record.id}`);
     } catch (err) {
-      console.error(err);
+      toast.error(
+        getApiErrorMessage(err, "Erro ao abrir o prontuário do atendimento.")
+      );
     }
   }
 
@@ -335,6 +340,12 @@ export default function AppointmentsCalendar() {
           </div>
         )}
         
+        {error && (
+          <div className="mb-4 rounded-lg border border-red-300 bg-red-100 px-4 py-3 text-sm text-red-800">
+            {error}
+          </div>
+        )}
+
         <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-bold">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { useFetch } from "@/hooks/useFetch";
 import { getAppointments, createAppointment, updateAppointment, startAppointmentAttendance } from "@/services/appointmentsService";
 import Modal from "@/components/modal/Modal";
@@ -7,6 +8,7 @@ import { getMedicalRecordByAppointment } from "@/services/medicalRecordService";
 import { getPatients } from "@/services/patientService";
 import { getProfessionals } from "@/services/professionalService";
 import { Appointment, AppointmentForm } from "@/types/appointment";
+import { getApiErrorMessage } from "@/utils/apiError";
 import { useAuth } from "@/contexts/AuthContext";
 import { Calendar, Stethoscope } from "lucide-react";
 
@@ -232,7 +234,7 @@ export default function Appointments() {
 
       handleClose();
     } catch (err) {
-      console.error(err);
+      toast.error(getApiErrorMessage(err, "Erro ao salvar o agendamento."));
     } finally {
       setSaving(false);
       setSubmitted(false);
@@ -273,7 +275,9 @@ export default function Appointments() {
 
       navigate(`/atendimento/${res.prontuario_id}`);
     } catch (err) {
-      console.error(err);
+      toast.error(
+        getApiErrorMessage(err, "Erro ao iniciar o atendimento.")
+      );
     }
   }
 
@@ -282,7 +286,9 @@ export default function Appointments() {
       const record = await getMedicalRecordByAppointment(appointmentId);
       navigate(`/atendimento/${record.id}`);
     } catch (err) {
-      console.error(err);
+      toast.error(
+        getApiErrorMessage(err, "Erro ao abrir o prontuário do atendimento.")
+      );
     }
   }
 
