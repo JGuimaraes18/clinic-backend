@@ -6,9 +6,10 @@ class ProntuarioSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Prontuario
-        fields = "__all__"
+        # SHA-256 sem sal do conteudo: nao revela o conteudo, mas permite
+        # forca bruta offline e anula a mascara aplicada em to_representation
+        exclude = ("hash_integridade",)
         read_only_fields = (
-            "hash_integridade",
             "criado_em",
             "finalizado_em",
             "finalizado_por",

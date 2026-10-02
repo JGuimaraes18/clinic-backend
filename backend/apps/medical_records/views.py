@@ -66,6 +66,7 @@ class ProntuarioViewSet(ClinicSafeModelViewSet):
         historico = (
             Prontuario.objects
             .filter(
+                atendimento__clinic_id=prontuario.atendimento.clinic_id,
                 atendimento__paciente=paciente,
                 atendimento__profissional=profissional,
                 status="FECHADO"
@@ -75,11 +76,21 @@ class ProntuarioViewSet(ClinicSafeModelViewSet):
             .order_by("-finalizado_em")
         )
 
+        # mesma regra aplicada em ProntuarioSerializer.to_representation:
+        # apenas o profissional responsavel enxerga o conteudo clinico
+        pode_ver_conteudo = (
+            profissional is not None
+            and profissional.user_id == request.user.id
+        )
+
         data = [
             {
                 "id": p.id,
                 "data": p.finalizado_em,
-                "resumo": p.conteudo[:150],
+                "resumo": (
+                    p.conteudo[:150] if pode_ver_conteudo
+                    else "Acesso restrito (Informação Sensível)"
+                ),
             }
             for p in historico
         ]
@@ -110,15 +121,16 @@ class ProntuarioViewSet(ClinicSafeModelViewSet):
     @action(detail=False, methods=["get"], url_path="by-appointment/(?P<appointment_id>[^/.]+)")
     def by_appointment(self, request, appointment_id=None):
         try:
-            prontuario = Prontuario.objects.get(atendimento_id=appointment_id)
+            # get_queryset() aplica o filtro por clinica do token; sem ele,
+            # qualquer atendimento de outra clinica seria lido aqui
+            prontuario = self.get_queryset().get(atendimento_id=appointment_id)
         except Prontuario.DoesNotExist:
             return Response(
                 {"detail": "Prontuário não encontrado."},
                 status=404
             )
 
-        serializer = self.get_serializer(prontuario)
-        return Response(serializer.data)
+        return Response(self.get_serializer(prontuario).data)
         
 
 class AdendoProntuarioViewSet(ClinicSafeModelViewSet):

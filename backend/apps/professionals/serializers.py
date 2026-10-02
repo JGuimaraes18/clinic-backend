@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from apps.clinics.models import Clinic
+from apps.accounts.models import Membership
 from .models import Professional, ProfessionalClinic
 
 
@@ -18,6 +19,27 @@ class ProfessionalSerializer(serializers.ModelSerializer):
 
     def get_full_name(self, obj):
         return obj.user.get_full_name()
+
+    def validate(self, attrs):
+        target_user = attrs.get("user")
+
+        if target_user is not None:
+            request = self.context["request"]
+            clinic_id = request.auth.get("clinic_id") if request.auth else None
+
+            if not clinic_id:
+                raise serializers.ValidationError("Usuário sem clínica ativa.")
+
+            if not Membership.objects.filter(
+                user=target_user,
+                clinic_id=clinic_id,
+                is_active=True,
+            ).exists():
+                raise serializers.ValidationError(
+                    {"user": "Usuário não pertence a esta clínica."}
+                )
+
+        return attrs
 
     def get_user_clinic(self):
         request = self.context["request"]

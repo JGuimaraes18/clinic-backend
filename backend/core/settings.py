@@ -31,6 +31,16 @@ CORS_ALLOW_HEADERS = [
     "content-type",
 ]
 
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend",
+)
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@clinify.com")
+FRONTEND_RESET_URL = os.getenv(
+    "FRONTEND_RESET_URL",
+    "http://localhost:3000/reset-password",
+)
+
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),

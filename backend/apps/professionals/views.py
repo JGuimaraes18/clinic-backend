@@ -12,9 +12,15 @@ class ProfessionalViewSet(ClinicSafeModelViewSet):
     permission_classes = [IsClinicUserWithRestrictions]
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        clinic_id = self.get_user_clinic_id()
         user = self.request.user
         role = self.request.auth.get("role") if self.request.auth else None
+
+        queryset = super().get_queryset().filter(
+            clinics__membership__clinic_id=clinic_id,
+            clinics__membership__is_active=True,
+            clinics__is_active=True,
+        ).distinct()
 
         if role == "PROFESSIONAL":
             return queryset.filter(user=user)

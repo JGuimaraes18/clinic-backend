@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.viewsets import ModelViewSet
 from django.contrib.auth import get_user_model
+from django.conf import settings
 
 from .serializers import (
     LoginSerializer,
@@ -172,22 +173,18 @@ class RequestPasswordResetView(APIView):
             # Geração de token seguro
             token_str = get_random_string(64)
             PasswordResetToken.objects.create(user=user, token=token_str)
-            
-            # Simulated send_mail logic since this is usually async, but we send directly here
-            # link = f"{request.scheme}://{request.get_host()}/reset-password?token={token_str}"
-            # In a real app, we'd send an email. We just pretend to or use django's send_mail
-            # send_mail(
-            #     "Recuperação de Senha",
-            #     f"Acesse o link para redefinir sua senha: {link}",
-            #     "noreply@clinify.com",
-            #     [email],
-            #     fail_silently=True,
-            # )
-            
-            # Retornando o token apenas para facilitar testes localmente
-            # Na produção NÃO devemos retornar o token na resposta
-            return Response({"detail": "Se o email existir, um link de recuperação foi enviado.", "debug_token": token_str})
-            
+
+            send_mail(
+                subject="Recuperação de Senha",
+                message=(
+                    "Acesse o link para redefinir sua senha:\n\n"
+                    f"{settings.FRONTEND_RESET_URL}?token={token_str}"
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=True,
+            )
+
         return Response({"detail": "Se o email existir, um link de recuperação foi enviado."})
 
 class ResetPasswordConfirmView(APIView):
