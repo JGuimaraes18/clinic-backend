@@ -26,6 +26,23 @@ function getNowForInput() {
   return now.toISOString().slice(0, 16);
 }
 
+// A API devolve data_hora com offset (ex.: 2026-10-02T22:00:00-03:00).
+// toISOString() converte para UTC e jogaria 22:00 de 2/out para 3/out,
+// divergindo do filtro e do horario exibido. Sempre comparar em data local.
+function getLocalDateKey(value: string | Date): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 function getStatusStyle(status: string) {
   switch (status) {
     case "AGENDADO":
@@ -93,10 +110,9 @@ export default function AppointmentsCalendar() {
   const [editing, setEditing] = useState<Appointment | null>(null);
 
   const [statusFilter, setStatusFilter] = useState<string>("TODOS");
-  const [dateFilter, setDateFilter] = useState<string>(() => {
-    const today = new Date();
-    return today.toISOString().split("T")[0];
-  });
+  const [dateFilter, setDateFilter] = useState<string>(() =>
+    getLocalDateKey(new Date())
+  );
 
   const [patientFilter, setPatientFilter] = useState<string>("TODOS");
   const [professionalFilter, setProfessionalFilter] = useState<string>("TODOS");
@@ -120,7 +136,7 @@ export default function AppointmentsCalendar() {
   });
 
   const filteredAppointments = appointments.filter((a) => {
-    const appointmentDate = a.data_hora.split("T")[0];
+    const appointmentDate = getLocalDateKey(a.data_hora);
 
     const matchStatus =
       statusFilter === "TODOS" || a.status === statusFilter;
@@ -140,8 +156,7 @@ export default function AppointmentsCalendar() {
   });
     
   const appointmentsOfDay = filteredAppointments.filter((a) => {
-    const d = new Date(a.data_hora);
-    return d.toISOString().slice(0, 10) === dateFilter;
+    return getLocalDateKey(a.data_hora) === dateFilter;
   });
 
   function handleClearFilters() {

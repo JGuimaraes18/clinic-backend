@@ -19,7 +19,7 @@ export default function ForgotPassword() {
 
     try {
       setLoading(true);
-      await api.post("/api/accounts/password-reset/request/", { email });
+      await api.post("/api/auth/password-reset/request/", { email });
       setSuccess(true);
       toast.success("Se o e-mail existir, um link de recuperação foi enviado.");
     } catch (err: any) {

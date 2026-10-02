@@ -16,6 +16,7 @@ import ResetPassword from "@/pages/ResetPassword";
 import Settings from "@/pages/Settings";
 import AuditLogs from "@/pages/AuditLogs";
 import ForcePasswordChange from "@/pages/ForcePasswordChange";
+import PlatformDashboard from "@/pages/PlatformDashboard";
 
 
 export default function AppRoutes() {
@@ -29,6 +30,9 @@ export default function AppRoutes() {
         <Route path="/force-password-change" element={<ForcePasswordChange />} />
         <Route element={<AppLayout />}>
           <Route index element={<Home />} />
+          <Route element={<PrivateRoute allowedRoles={["SUPERUSER"]} />}>
+            <Route path="plataforma" element={<PlatformDashboard />} />
+          </Route>
           <Route path="agendamentos" element={<Appointments />} />
           <Route path="calendar" element={<AppointmentsCalendar />} />
           <Route path="pacientes" element={<Patients />} />

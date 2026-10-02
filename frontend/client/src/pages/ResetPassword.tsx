@@ -38,7 +38,7 @@ export default function ResetPassword() {
 
     try {
       setLoading(true);
-      await api.post("/api/accounts/password-reset/confirm/", { token, password });
+      await api.post("/api/auth/password-reset/confirm/", { token, password });
       toast.success("Senha redefinida com sucesso!");
       navigate("/login");
     } catch (err: any) {

@@ -83,7 +83,7 @@ export default function AppLayout() {
   ];
 
   const platformMenu = [
-    { path: "/", label: "Dashboard da Plataforma", icon: Activity },
+    { path: "/plataforma", label: "Dashboard da Plataforma", icon: Activity },
     { path: "/clinicas", label: "Clínicas", icon: Stethoscope },
     { path: "/usuarios", label: "Administradores", icon: Users },
     { path: "/audit-logs", label: "Logs de Auditoria", icon: FileText },

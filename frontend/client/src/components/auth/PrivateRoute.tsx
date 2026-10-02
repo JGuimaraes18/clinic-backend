@@ -31,7 +31,7 @@ export default function PrivateRoute({ allowedRoles }: PrivateRouteProps) {
   }
 
   // 🔐 Restrição por role (opcional)
-  if (allowedRoles && role && !allowedRoles.includes(role)) {
+  if (allowedRoles && (!role || !allowedRoles.includes(role))) {
     return <Navigate to="/" replace />;
   }
 
