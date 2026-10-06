@@ -1,6 +1,5 @@
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
-from apps.accounts.models import Membership
 from apps.audit.services import log_audit_event
 
 

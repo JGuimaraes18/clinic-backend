@@ -2,10 +2,11 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
 from django.core.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from apps.core.views import ClinicSafeModelViewSet
 from apps.core.permissions import IsAdminOrProfessional
 from .models import Prontuario, AdendoProntuario
-from .serializers import ( ProntuarioSerializer, AdendoProntuarioSerializer )
+from .serializers import ( ProntuarioSerializer, AdendoProntuarioSerializer, can_view_conteudo, RESTRITO )
 
 
 class ProntuarioViewSet(ClinicSafeModelViewSet):
@@ -46,11 +47,11 @@ class ProntuarioViewSet(ClinicSafeModelViewSet):
         appointment = serializer.validated_data["atendimento"]
         user = self.request.user
 
-        if not (
-            user.is_superuser or
-            appointment.profissional.user == user
-        ):
-            raise ValidationError(
+        # can_view_conteudo trata atendimento sem profissional definido
+        # (profissional opcional) como "sem acesso" em vez de levantar
+        # AttributeError -> 500.
+        if not (user.is_superuser or can_view_conteudo(user, appointment)):
+            raise DRFValidationError(
                 "Apenas o médico responsável pode iniciar atendimento."
             )
 
@@ -78,10 +79,7 @@ class ProntuarioViewSet(ClinicSafeModelViewSet):
 
         # mesma regra aplicada em ProntuarioSerializer.to_representation:
         # apenas o profissional responsavel enxerga o conteudo clinico
-        pode_ver_conteudo = (
-            profissional is not None
-            and profissional.user_id == request.user.id
-        )
+        pode_ver_conteudo = can_view_conteudo(request.user, prontuario.atendimento)
 
         data = [
             {
@@ -89,7 +87,7 @@ class ProntuarioViewSet(ClinicSafeModelViewSet):
                 "data": p.finalizado_em,
                 "resumo": (
                     p.conteudo[:150] if pode_ver_conteudo
-                    else "Acesso restrito (Informação Sensível)"
+                    else RESTRITO
                 ),
             }
             for p in historico

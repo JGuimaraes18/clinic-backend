@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from apps.clinics.models import Clinic
+from apps.core.utils import resolve_user_clinic
 from apps.accounts.models import Membership
 from .models import Professional, ProfessionalClinic
 
@@ -42,21 +42,7 @@ class ProfessionalSerializer(serializers.ModelSerializer):
         return attrs
 
     def get_user_clinic(self):
-        request = self.context["request"]
-        clinic_id = request.auth.get("clinic_id") if request.auth else None
-
-        if request.user.is_superuser and not clinic_id:
-            return None
-
-        if not clinic_id:
-            raise serializers.ValidationError(
-                "Usuário sem clínica ativa."
-            )
-
-        try:
-            return Clinic.objects.get(id=clinic_id)
-        except Clinic.DoesNotExist:
-            raise serializers.ValidationError("Clínica não encontrada.")
+        return resolve_user_clinic(self.context)
 
     def create(self, validated_data):
         professional = super().create(validated_data)
@@ -65,7 +51,6 @@ class ProfessionalSerializer(serializers.ModelSerializer):
         clinic_id = request.auth.get("clinic_id") if request.auth else None
 
         if clinic_id:
-            from apps.accounts.models import Membership
             # Procura a membership do usuário recém-transformado em profissional,
             # não a do usuário logado (que poderia ser admin/superuser)
             membership = Membership.objects.filter(

@@ -1,5 +1,4 @@
 from apps.accounts.permissions import IsClinicAdminOrSuperuser
-from apps.accounts.models import Membership
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response

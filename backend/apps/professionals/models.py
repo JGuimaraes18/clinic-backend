@@ -1,7 +1,6 @@
 from django.db import models
 from django.db.models import UniqueConstraint
 from apps.core.models import BaseModel
-from apps.accounts.models import Membership
 
 
 class Professional(BaseModel):

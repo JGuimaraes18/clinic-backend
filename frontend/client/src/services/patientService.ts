@@ -7,7 +7,7 @@ export async function getPatients(): Promise<Patient[]> {
   return response.data;
 }
 
-export async function createPatient(data: any): Promise<Patient> {
+export async function createPatient(data: PatientForm): Promise<Patient> {
   const response = await api.post("/api/patients/", data);
   return response.data;
 }

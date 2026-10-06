@@ -2,6 +2,26 @@ from rest_framework import serializers
 from .models import Prontuario, AdendoProntuario
 
 
+def can_view_conteudo(user, atendimento):
+    """
+    Regra unica de acesso ao conteudo clinico (B2c).
+
+    Somente o profissional responsavel pelo atendimento enxerga o conteudo.
+    Atendimento.profissional e opcional (null=True): sem profissional
+    definido, ninguem enxerga o conteudo.
+    """
+    profissional = getattr(atendimento, "profissional", None)
+    user_id = getattr(user, "id", None)
+
+    if profissional is None or user_id is None:
+        return False
+
+    return profissional.user_id == user_id
+
+
+RESTRITO = "Acesso restrito (Informação Sensível)"
+
+
 class ProntuarioSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -51,19 +71,10 @@ class ProntuarioSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         request = self.context.get("request")
-        
-        if request and request.user:
-            user = request.user
-            # Only the professional assigned to the appointment or explicitly authorized can view 'conteudo'
-            # If the user is the professional of the appointment, they can view
-            is_professional_of_record = (
-                instance.atendimento.profissional.user == user
-            )
-            
-            # SuperAdmin or Admin should not see contents unless they are the professional
-            if not is_professional_of_record:
-                data["conteudo"] = "Acesso restrito (Informação Sensível)"
-        
+
+        if request and request.user and not can_view_conteudo(request.user, instance.atendimento):
+            data["conteudo"] = RESTRITO
+
         return data
 
 
@@ -81,14 +92,8 @@ class AdendoProntuarioSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         request = self.context.get("request")
-        
-        if request and request.user:
-            user = request.user
-            is_professional_of_record = (
-                instance.prontuario.atendimento.profissional.user == user
-            )
-            
-            if not is_professional_of_record:
-                data["conteudo"] = "Acesso restrito (Informação Sensível)"
-                
+
+        if request and request.user and not can_view_conteudo(request.user, instance.prontuario.atendimento):
+            data["conteudo"] = RESTRITO
+
         return data

@@ -44,14 +44,12 @@ export default function Users() {
     loadClinics();
   }, [loggedUser]);
 
+  // O carregamento inicial ja e feito pelo useFetch(getUsers) acima;
+  // este helper so e usado para recarregar apos criar/editar.
   async function loadUsers() {
     const users = await getUsers();
     setUsers(users);
   }
-
-  useEffect(() => {
-    loadUsers();
-  }, []);
 
   function validate() {
     const newErrors: UserErrors = {};
@@ -94,7 +92,7 @@ export default function Users() {
   async function handleSave() {
     if (!validate()) return;
 
-    const payload: any = { ...form };
+    const payload: Partial<UserForm> = { ...form };
 
     if (!payload.password) delete payload.password;
     if (!payload.role) delete payload.role;

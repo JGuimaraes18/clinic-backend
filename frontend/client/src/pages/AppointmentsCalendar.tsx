@@ -418,7 +418,7 @@ export default function AppointmentsCalendar() {
             className="border rounded-lg px-3 py-1 text-xs"
           >
             <option value="TODOS">Todos os pacientes</option>
-            {patients.map((p: any) => (
+            {patients.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.full_name}
               </option>
@@ -431,7 +431,7 @@ export default function AppointmentsCalendar() {
             className="border rounded-lg px-3 py-1 text-xs"
           >
             <option value="TODOS">Todos os profissionais</option>
-            {professionals.map((p: any) => (
+            {professionals.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.full_name}
               </option>
@@ -612,7 +612,7 @@ export default function AppointmentsCalendar() {
             }`}
           >
             <option value="">Selecione o paciente</option>
-            {patients.map((p: any) => (
+            {patients.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.full_name}
               </option>
@@ -632,7 +632,7 @@ export default function AppointmentsCalendar() {
             }`}
           >
             <option value="">Selecione o profissional</option>
-            {professionals.map((p: any) => (
+            {professionals.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.full_name}
               </option>

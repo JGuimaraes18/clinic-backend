@@ -28,7 +28,7 @@ export async function getUsers(): Promise<User[]> {
   return data;
 }
 
-export async function createUser(payload: UserForm): Promise<User> {
+export async function createUser(payload: Partial<UserForm>): Promise<User> {
   const { data } = await api.post("/api/auth/users/", payload);
   return data;
 }
@@ -47,7 +47,14 @@ export async function deleteUser(id: number): Promise<void> {
 
 import { UserSettings } from "@/types/users";
 
-export async function updateUserSettings(settings: Partial<UserSettings>): Promise<any> {
+export interface UpdateSettingsResponse {
+  detail: string;
+  settings: UserSettings;
+}
+
+export async function updateUserSettings(
+  settings: Partial<UserSettings>
+): Promise<UpdateSettingsResponse> {
   const { data } = await api.post("/api/auth/me/settings/", settings);
   return data;
 }

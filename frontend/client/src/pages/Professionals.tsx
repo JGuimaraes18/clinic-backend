@@ -106,7 +106,7 @@ export default function Professionals() {
 
     try {
       if (editingId) {
-        const updated = await updateProfessional(editingId, payload as any);
+        const updated = await updateProfessional(editingId, payload);
 
         setProfessionals((prev) =>
           prev.map((p) => (p.id === editingId ? updated : p))

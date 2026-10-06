@@ -6,7 +6,6 @@ Unica fonte de verdade para as duas camadas obrigatorias do B7:
   Camada 1 - escrita (impede que dados sensiveis sejam gravados):
       apps/audit/signals.py
       apps/audit/services.py
-      apps/audit/utils.py
 
   Camada 2 - leitura (impede que dados sensiveis historicos sejam expostos):
       apps/audit/serializers.py

@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Sun, Moon, Laptop, Palette, Layout, Type, Save } from "lucide-react";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/utils/apiError";
+import { UserSettings } from "@/types/users";
 
 const COLORS = [
   { name: "Sálvia", hex: "#6B9E7F" },
@@ -86,7 +87,7 @@ export default function Settings() {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setTheme(item.id as any)}
+                    onClick={() => setTheme(item.id as UserSettings["theme"])}
                     className={`flex flex-col items-center justify-center p-5 rounded-2xl border-2 text-center transition-all duration-200 cursor-pointer ${
                       isSelected
                         ? "border-primary bg-primary/5 text-primary"
@@ -162,7 +163,7 @@ export default function Settings() {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setDensity(item.id as any)}
+                    onClick={() => setDensity(item.id as UserSettings["density"])}
                     className={`flex flex-col items-start p-5 rounded-2xl border-2 text-left transition-all duration-200 cursor-pointer ${
                       isSelected
                         ? "border-primary bg-primary/5 text-primary"
@@ -193,7 +194,7 @@ export default function Settings() {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setFontSize(item.id as any)}
+                    onClick={() => setFontSize(item.id as NonNullable<UserSettings["font_size"]>)}
                     className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 text-center transition-all duration-200 cursor-pointer ${
                       isSelected
                         ? "border-primary bg-primary/5 text-primary"

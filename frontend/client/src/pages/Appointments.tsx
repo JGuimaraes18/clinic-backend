@@ -364,7 +364,7 @@ export default function Appointments() {
               className="border border-gray-200 rounded-xl px-4 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
             >
               <option value="TODOS">Todos os pacientes</option>
-              {patients.map((p: any) => (
+              {patients.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.full_name}
                 </option>
@@ -377,7 +377,7 @@ export default function Appointments() {
               className="border border-gray-200 rounded-xl px-4 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
             >
               <option value="TODOS">Todos os profissionais</option>
-              {professionals.map((p: any) => (
+              {professionals.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.full_name}
                 </option>
@@ -549,7 +549,7 @@ export default function Appointments() {
             }`}
           >
             <option value="">Selecione o paciente</option>
-            {patients.map((p: any) => (
+            {patients.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.full_name}
               </option>
@@ -570,7 +570,7 @@ export default function Appointments() {
             } ${isProfessional ? "bg-gray-100 cursor-not-allowed" : ""}`}
           >
             <option value="">Selecione o profissional</option>
-            {professionals.map((p: any) => (
+            {professionals.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.full_name}
               </option>

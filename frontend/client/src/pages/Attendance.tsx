@@ -6,6 +6,8 @@ import {
   updateMedicalRecord,
   closeMedicalRecord,
   getMedicalHistory,
+  MedicalRecord,
+  MedicalRecordHistoryItem,
 } from "@/services/medicalRecordService";
 import { getApiErrorMessage } from "@/utils/apiError";
 
@@ -13,11 +15,11 @@ export default function Attendance() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [record, setRecord] = useState<any>(null);
+  const [record, setRecord] = useState<MedicalRecord | null>(null);
   const [conteudo, setConteudo] = useState("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<MedicalRecordHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -201,7 +203,9 @@ export default function Attendance() {
         {isClosed && (
           <div className="text-green-600 font-semibold">
             Prontuário fechado em{" "}
-            {new Date(record.finalizado_em).toLocaleString("pt-BR")}
+            {record.finalizado_em
+              ? new Date(record.finalizado_em).toLocaleString("pt-BR")
+              : "—"}
           </div>
         )}
       </div>
@@ -224,7 +228,9 @@ export default function Attendance() {
             className="p-3 border rounded-lg bg-white shadow-sm"
           >
             <div className="text-xs text-gray-500">
-              {new Date(item.data).toLocaleDateString("pt-BR")}
+              {item.data
+                ? new Date(item.data).toLocaleDateString("pt-BR")
+                : "—"}
             </div>
             <div className="text-sm mt-1 line-clamp-3">
               {item.resumo}

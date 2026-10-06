@@ -6,7 +6,7 @@ export async function getAppointments(): Promise<Appointment[]> {
   return response.data;
 }
 
-export async function createAppointment(data: any): Promise<Appointment> {
+export async function createAppointment(data: AppointmentForm): Promise<Appointment> {
   const response = await api.post("/api/appointments/", data);
   return response.data;
 }

@@ -11,6 +11,12 @@ export interface MedicalRecord {
   finalizado_por: number | null;
 }
 
+export interface MedicalRecordHistoryItem {
+  id: number;
+  data: string | null;
+  resumo: string;
+}
+
 export interface MedicalRecordCreate {
   conteudo: string;
   atendimento: number;
@@ -64,8 +70,12 @@ export async function closeMedicalRecord(id: number) {
   return response.data;
 }
 
-export async function getMedicalHistory(id: number) {
-  const response = await api.get(`/api/medical-records/${id}/historico/`);
+export async function getMedicalHistory(
+  id: number
+): Promise<MedicalRecordHistoryItem[]> {
+  const response = await api.get<MedicalRecordHistoryItem[]>(
+    `/api/medical-records/${id}/historico/`
+  );
   return response.data;
 }
 
