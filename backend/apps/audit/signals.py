@@ -8,6 +8,7 @@ import decimal
 import uuid
 
 from .models import AuditLog
+from .redaction import sanitize_snapshot
 from core.middleware import get_current_ip, get_current_user
 
 
@@ -95,6 +96,27 @@ def should_audit(sender, instance):
     return True
 
 
+def resolve_clinic(instance):
+    """
+    Deriva a clinica do evento auditado.
+
+    Patient/Atendimento possuem `clinic` proprio; Prontuario e
+    AdendoProntuario nao, entao a clinica e derivada do Atendimento.
+    """
+    clinic = getattr(instance, "clinic", None)
+    if clinic is not None:
+        return clinic
+
+    atendimento = getattr(instance, "atendimento", None)
+    if atendimento is None:
+        atendimento = getattr(getattr(instance, "prontuario", None), "atendimento", None)
+
+    if atendimento is None:
+        return None
+
+    return getattr(atendimento, "clinic", None)
+
+
 # 🔎 Captura estado anterior antes de salvar
 @receiver(pre_save)
 def capture_old_data(sender, instance, **kwargs):
@@ -117,9 +139,10 @@ def log_create_update(sender, instance, created, **kwargs):
     severity=get_severity(sender.__name__, "CREATE" if created else "UPDATE")
 
     user = get_current_user()
-    clinic = getattr(instance, "clinic", None)
-    after_data = model_to_dict_safe(instance)
-    before_data = getattr(instance, "_old_data", None)
+    clinic = resolve_clinic(instance)
+    # Camada 1: payload saneado ANTES de chegar ao banco.
+    after_data = sanitize_snapshot(sender.__name__, model_to_dict_safe(instance))
+    before_data = sanitize_snapshot(sender.__name__, getattr(instance, "_old_data", None))
 
     ip_address = get_current_ip()
 
@@ -128,7 +151,7 @@ def log_create_update(sender, instance, created, **kwargs):
         changed_fields = {}
 
         for field, old_value in before_data.items():
-            new_value = after_data.get(field)
+            new_value = after_data.get(field) if after_data else None
 
             if old_value != new_value:
                 changed_fields[field] = {
@@ -150,6 +173,8 @@ def log_create_update(sender, instance, created, **kwargs):
         object_id=str(instance.pk),
         before_data=None if created else before_data,
         after_data=after_data if created else None,
+        severity=severity,
+        ip_address=ip_address,
     )
 
 
@@ -162,9 +187,10 @@ def log_delete(sender, instance, **kwargs):
     severity=get_severity(sender.__name__, "DELETE")
 
     user = get_current_user()
-    clinic = getattr(instance, "clinic", None)
+    clinic = resolve_clinic(instance)
 
-    before_data = model_to_dict_safe(instance)
+    # Camada 1: payload saneado ANTES de chegar ao banco.
+    before_data = sanitize_snapshot(sender.__name__, model_to_dict_safe(instance))
 
     AuditLog.objects.create(
         user=user if user and user.is_authenticated else None,
@@ -174,4 +200,6 @@ def log_delete(sender, instance, **kwargs):
         object_id=str(instance.pk),
         before_data=before_data,
         after_data=None,
+        severity=severity,
+        ip_address=get_current_ip(),
     )
