@@ -9,17 +9,45 @@ def normalize_cpf(value: str) -> str:
 
 
 class PatientSerializer(serializers.ModelSerializer):
+    """
+    Contrato publico do paciente (B6 - protecao de CPF/RG).
+
+    INPUT: `cpf` e `document` continuam aceitos (necessarios para criar e
+    editar o cadastro).
+
+    OUTPUT: nenhum dos tres campos sensiveis e devolvido:
+      * `cpf`        -> write_only
+      * `document`   -> write_only
+      * `cpf_hash`   -> fora de `fields` (detalhe interno de unicidade
+                        por clinica; o model continua calculando e
+                        persistindo normalmente)
+    """
 
     class Meta:
         model = Patient
-        fields = "__all__"
+        fields = [
+            "id",
+            "full_name",
+            "cpf",
+            "document",
+            "phone",
+            "email",
+            "birth_date",
+            "clinic",
+            "is_deleted",
+            "created_at",
+            "updated_at",
+        ]
         read_only_fields = [
             "clinic",
             "is_deleted",
             "created_at",
             "updated_at",
-            "cpf_hash"
         ]
+        extra_kwargs = {
+            "cpf": {"write_only": True, "required": False, "allow_null": True},
+            "document": {"write_only": True, "required": False, "allow_null": True},
+        }
 
     def get_user_clinic(self):
         return resolve_user_clinic(self.context)

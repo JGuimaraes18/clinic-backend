@@ -72,7 +72,15 @@ export default function Patients() {
 
     try {
       if (editingId) {
-        const updated = await updatePatient(editingId, form);
+        // B6: a API nao devolve mais o CPF, entao o formulario abre vazio.
+        // CPF vazio significa "manter o atual" e NAO e enviado no PUT,
+        // para apagar sem querer o CPF ja cadastrado.
+        const { cpf, ...rest } = form;
+        const payload: Partial<PatientForm> = cpf.trim()
+          ? { ...rest, cpf }
+          : rest;
+
+        const updated = await updatePatient(editingId, payload);
 
         setPatients((prev) =>
           prev.map((p) => (p.id === editingId ? updated : p))
@@ -98,7 +106,7 @@ export default function Patients() {
 
     setForm({
       full_name: patient.full_name || "",
-      cpf: patient.cpf || "",
+      cpf: "",
       email: patient.email || "",
       phone: patient.phone || "",
       birth_date: patient.birth_date || "",
@@ -202,9 +210,6 @@ export default function Patients() {
                           </td>
 
                           <td className="px-6 py-5">
-                            <div className="text-gray-600 mb-1 font-medium">
-                              {formatCPF(p.cpf)}
-                            </div>
                             <div className="flex items-center gap-2 text-xs text-gray-500">
                               <span>📅 {formatDateBR(p.birth_date)}</span>
                               <span className="text-gray-300">•</span>
@@ -265,10 +270,6 @@ export default function Patients() {
                         📅 {formatDateBR(p.birth_date)}
                       </div>
 
-                      <div className="text-sm text-gray-600">
-                        🆔 {formatCPF(p.cpf)}
-                      </div>
-
                       <div className="text-sm text-gray-600 truncate">
                         ✉️ {p.email}
                       </div>
@@ -314,7 +315,7 @@ export default function Patients() {
 
           <input
             type="text"
-            placeholder="CPF"
+            placeholder={editingId ? "CPF (em branco = manter o atual)" : "CPF"}
             className="w-full border p-3 rounded-lg"
             value={form.cpf}
             onChange={(e) =>

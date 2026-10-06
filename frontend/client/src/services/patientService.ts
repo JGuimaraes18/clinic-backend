@@ -14,7 +14,7 @@ export async function createPatient(data: PatientForm): Promise<Patient> {
 
 export async function updatePatient(
   id: number,
-  data: PatientForm
+  data: Partial<PatientForm>
 ): Promise<Patient> {
   const response = await api.put(`/api/patients/${id}/`, data);
   return response.data;
