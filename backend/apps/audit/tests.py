@@ -769,3 +769,190 @@ class AuditHistoricoTestCase(BaseAuditTestCase):
         self.assertFalse(
             any("redact" in p.name.lower() for p in migracoes_dir.glob("*.py"))
         )
+
+
+# ---------------------------------------------------------------------------
+# LOTE 6 - ATRIBUICAO, DEDUP E INTEGRIDADE FK
+# ---------------------------------------------------------------------------
+class AuditLote6RegressaoTestCase(BaseAuditTestCase):
+
+    def test_26_api_atribui_usuario_autenticado_ao_auditlog(self):
+        """
+        Regressao L6 (P0): antes, o CurrentUserMiddleware registrava o
+        AnonymousUser antes da autenticacao DRF e toda linha de auditoria
+        de uma requisicao autenticada ficava com user=None.
+        """
+        _clear_actor()
+        admin = User.objects.create_user(
+            email="admin.l6@clinica.test",
+            password=SENHA_MARCA,
+            first_name="Admin",
+            last_name="L6",
+        )
+        Membership.objects.create(user=admin, clinic=self.clinic, role="ADMIN")
+        _clear_actor()
+
+        client = APIClient()
+        response = client.post(
+            "/api/auth/login/",
+            {
+                "email": "admin.l6@clinica.test",
+                "password": SENHA_MARCA,
+                "clinic_slug": self.clinic.slug,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {response.json()['access']}"
+        )
+
+        # Cria um Patient via API com o usuario autenticado no JWT.
+        response = client.post(
+            "/api/patients/",
+            {
+                "full_name": "Paciente L6",
+                "phone": "11922223333",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201, response.content)
+
+        log = AuditLog.objects.get(
+            model_name="Patient", action="CREATE", object_id=str(response.json()["id"])
+        )
+        self.assertEqual(log.user_id, admin.pk)
+        self.assertIsNotNone(log.ip_address)
+
+    def test_27_login_atribui_usuario_em_user_auditlog(self):
+        """
+        Regressao L6 (P0): o mesmo problema da atribuicao afetava as
+        operacoes sobre User/Membership disparadas via API. Aqui o usuario
+        e criado por um request autenticado (POST /api/users/), de forma
+        que todos os signals disparam dentro do contexto da requisicao.
+        """
+        _clear_actor()
+        admin = User.objects.create_user(
+            email="admin.l6b@clinica.test",
+            password=SENHA_MARCA,
+            first_name="Admin",
+            last_name="L6B",
+        )
+        Membership.objects.create(user=admin, clinic=self.clinic, role="ADMIN")
+        _clear_actor()
+
+        client = APIClient()
+        response = client.post(
+            "/api/auth/login/",
+            {
+                "email": "admin.l6b@clinica.test",
+                "password": SENHA_MARCA,
+                "clinic_slug": self.clinic.slug,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {response.json()['access']}"
+        )
+
+        response = client.post(
+            "/api/auth/users/",
+            {
+                "email": "criado.pela.api@clinica.test",
+                "password": SENHA_MARCA,
+                "first_name": "Criado",
+                "last_name": "PelaApi",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201, response.content)
+        novo = User.objects.get(email="criado.pela.api@clinica.test")
+        log = AuditLog.objects.get(
+            model_name="User", action="CREATE", object_id=str(novo.pk)
+        )
+        self.assertEqual(log.user_id, admin.pk)
+
+    def test_28_user_nao_duplica_auditlog(self):
+        """
+        Regressao L6 (P1): User possui emissor curado em accounts/signals.py;
+        o emissor generico de apps/audit/signals.py precisa ignorar o modelo
+        para nao gravar duas linhas para a mesma operacao.
+        """
+        _acting_as(self.superuser)
+        user = User.objects.create_user(
+            email="sem.duplicado@clinica.test", password=SENHA_MARCA
+        )
+        users = AuditLog.objects.filter(
+            model_name="User", action="CREATE", object_id=str(user.pk)
+        )
+        self.assertEqual(users.count(), 1)
+
+    def test_29_membership_nao_duplica_auditlog(self):
+        """
+        Regressao L6 (P1): idem para Membership.
+        """
+        _acting_as(self.superuser)
+        user = User.objects.create_user(
+            email="membro.sem.duplicado@clinica.test", password=SENHA_MARCA
+        )
+        member = Membership.objects.create(user=user, clinic=self.clinic, role="ATTENDANT")
+        membros = AuditLog.objects.filter(
+            model_name="Membership",
+            action="CREATE",
+            object_id=str(member.pk),
+        )
+        self.assertEqual(membros.count(), 1)
+
+    def test_30_delete_de_usuario_nao_quebra_fk(self):
+        """
+        Regressao L6: o emissor post_delete de User precisa registrar a
+        auditoria sem referenciar uma linha que acabou de ser apagada.
+        O ator e o superuser (ainda existente); o alvo some do payload.
+        """
+        _acting_as(self.superuser)
+        alvo = User.objects.create_user(
+            email="alvo.delete.l6@clinica.test", password=SENHA_MARCA
+        )
+
+        alvo.delete()
+        _clear_actor()
+
+        log = AuditLog.objects.filter(
+            model_name="User", action="DELETE"
+        ).latest("id")
+        self.assertEqual(log.user_id, self.superuser.pk)
+        self.assertEqual(log.before_data["email"], "alvo.delete.l6@clinica.test")
+
+    def test_31_delete_de_membership_nao_quebra_fk(self):
+        """
+        Regressao L6: idem para o post_delete de Membership, usada via
+        cascade quando um User e apagado.
+        """
+        _acting_as(self.superuser)
+        alvo = User.objects.create_user(
+            email="membro.delete.l6@clinica.test", password=SENHA_MARCA
+        )
+        membership = Membership.objects.create(
+            user=alvo, clinic=self.clinic, role="ATTENDANT"
+        )
+        membership_pk = membership.pk
+
+        alvo.delete()
+        _clear_actor()
+
+        log = AuditLog.objects.filter(
+            model_name="Membership", action="DELETE"
+        ).latest("id")
+        self.assertEqual(log.object_id, str(membership_pk))
+        self.assertIsNotNone(log.clinic_id)
+
+    def test_32_cleanup_audit_command_existe(self):
+        """
+        Regressao L6: o comando cleanup_audit vivia em
+        management/commandsa/ (mismatch) e nunca era descoberto pelo
+        Django. Agora esta em management/commands/.
+        """
+        from django.core.management import get_commands
+
+        self.assertIn("cleanup_audit", get_commands())

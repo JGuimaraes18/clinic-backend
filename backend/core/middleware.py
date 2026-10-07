@@ -2,9 +2,6 @@ import threading
 
 _user = threading.local()
 
-def set_current_user(user):
-    _user.user = user
-
 def get_current_user():
     return getattr(_user, "value", None)
 
@@ -33,7 +30,16 @@ class CurrentUserMiddleware:
 
         set_current_ip(ip)
 
-        response = self.get_response(request)
+        try:
+            response = self.get_response(request)
+        finally:
+            # O contexto de auditoria e escopado a requisicao: sem esta
+            # limpeza o usuario autenticado "vazaria" para requests
+            # seguintes na mesma thread/processo, gravando AuditLog com
+            # um user_id que pode nao existir mais (ex.: apos rollback).
+            _user.value = None
+            set_current_ip(None)
+
         return response
 
 
@@ -66,7 +72,12 @@ class ForcePasswordChangeMiddleware(MiddlewareMixin):
                 user, token = auth_result
                 request.user = user
                 request.auth = token
-                
+
+                # Contexto de auditoria: o CurrentUserMiddleware roda antes
+                # da autenticacao DRF e so enxerga AnonymousUser aqui. Sem
+                # esta atribuicao toda linha de Auditoria fica sem usuario.
+                _user.value = user
+
                 # Check if force_password_change is True
                 if getattr(user, "force_password_change", False):
                     # We must allow me, change-password, and update-settings

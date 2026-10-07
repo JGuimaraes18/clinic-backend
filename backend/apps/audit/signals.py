@@ -1,6 +1,7 @@
 from django.db.models.signals import post_save, pre_save, pre_delete
 from django.dispatch import receiver
 from django.db import models
+from django.db.models.fields.files import FieldFile
 import datetime
 import decimal
 import uuid
@@ -18,17 +19,10 @@ ALLOWED_APPS = [
     "accounts",
 ]
 
-# Apps que NÃO devem ser auditadas
-EXCLUDED_APPS = [
-    "admin",
-    "contenttypes",
-    "sessions",
-    "auth",
-    "audit", 
-]
-
-
-from django.db.models.fields.files import FieldFile
+# Models que possuem emissor proprio e curado em apps/accounts/signals.py.
+# O emissor generico nao pode duplicar a mesma operacao: regra de "uma
+# operacao = um AuditLog".
+DEDICATED_AUDIT_MODELS = frozenset({"User", "Membership"})
 
 def serialize_value(value):
     if isinstance(value, (datetime.datetime, datetime.date)):
@@ -79,16 +73,12 @@ def get_severity(model_name, action):
     return "LOW"
 
 
-def should_audit(sender, instance):
+def should_audit(sender):
     if sender._meta.app_label not in ALLOWED_APPS:
-        return
-
-    # Não auditar o próprio AuditLog
-    if isinstance(instance, AuditLog):
         return False
 
-    # Ignorar apps internas
-    if sender._meta.app_label in EXCLUDED_APPS:
+    # Nao duplicar o que o emissor curado jah registra.
+    if sender.__name__ in DEDICATED_AUDIT_MODELS:
         return False
 
     return True
@@ -131,7 +121,7 @@ def capture_old_data(sender, instance, **kwargs):
 # 💾 CREATE / UPDATE
 @receiver(post_save)
 def log_create_update(sender, instance, created, **kwargs):
-    if not should_audit(sender, instance):
+    if not should_audit(sender):
         return
     
     severity=get_severity(sender.__name__, "CREATE" if created else "UPDATE")
@@ -179,7 +169,7 @@ def log_create_update(sender, instance, created, **kwargs):
 # 🗑 DELETE
 @receiver(pre_delete)
 def log_delete(sender, instance, **kwargs):
-    if not should_audit(sender, instance):
+    if not should_audit(sender):
         return
 
     severity=get_severity(sender.__name__, "DELETE")

@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from audit.models import AuditLog
+from apps.audit.models import AuditLog
 from datetime import timedelta
 
 

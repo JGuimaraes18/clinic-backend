@@ -14,17 +14,11 @@ class ProntuarioViewSet(ClinicSafeModelViewSet):
     permission_classes = [IsAdminOrProfessional]
 
     def get_queryset(self):
-        user = self.request.user
+        clinic_id = self.get_user_clinic_id()
 
-        # Superuser vê tudo
-        if user.is_superuser:
-            qs = Prontuario.objects.all()
-        else:
-            clinic_id = self.get_user_clinic_id()
-
-            qs = Prontuario.objects.filter(
-                atendimento__clinic_id=clinic_id
-            )
+        qs = Prontuario.objects.filter(
+            atendimento__clinic_id=clinic_id
+        )
 
         qs = qs.select_related(
             "atendimento",
@@ -136,15 +130,15 @@ class AdendoProntuarioViewSet(ClinicSafeModelViewSet):
     permission_classes = [IsAdminOrProfessional]
 
     def get_queryset(self):
-        user = self.request.user
+        clinic_id = self.get_user_clinic_id()
 
-        if user.is_superuser:
-            qs = AdendoProntuario.objects.all()
-        else:
-            clinic_id = self.get_user_clinic_id()
+        qs = AdendoProntuario.objects.filter(
+            prontuario__atendimento__clinic_id=clinic_id
+        )
 
-            qs = AdendoProntuario.objects.filter(
-                prontuario__atendimento__clinic_id=clinic_id
-            )
-
-        return qs.select_related("prontuario", "criado_por")
+        # to_representation acessa prontuario.atendimento: precisa vir junto
+        return qs.select_related(
+            "prontuario",
+            "prontuario__atendimento",
+            "criado_por",
+        )

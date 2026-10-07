@@ -3,11 +3,18 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.exceptions import PermissionDenied
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.viewsets import ModelViewSet
 from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.utils.crypto import get_random_string
+from django.core.mail import send_mail
+from core.middleware import get_current_ip
 
+from .models import Membership, PasswordResetToken, UserSettings
+from apps.audit.services import log_audit_event
+from apps.clinics.models import Clinic
 from .serializers import (
     LoginSerializer,
     UserCreateSerializer,
@@ -66,8 +73,7 @@ class ChangePasswordView(APIView):
         user.set_password(new_password)
         user.force_password_change = False
         user.save()
-        
-        from apps.audit.services import log_audit_event
+
         log_audit_event(
             user=user,
             clinic=None,
@@ -75,7 +81,7 @@ class ChangePasswordView(APIView):
             model_name="User",
             object_id=str(user.pk),
             before_data={"event": "Senha alterada pelo usuário"},
-            ip_address=request.META.get("REMOTE_ADDR"),
+            ip_address=get_current_ip(),
         )
         return Response({"detail": "Senha atualizada com sucesso."})
 
@@ -84,8 +90,6 @@ class UpdateSettingsView(APIView):
 
     def post(self, request):
         user = request.user
-        from .models import UserSettings
-        
         settings, _ = UserSettings.objects.get_or_create(user=user)
         
         theme = request.data.get("theme")
@@ -122,7 +126,7 @@ class UserViewSet(ModelViewSet):
 
     def get_queryset(self):
         if self.request.user.is_superuser:
-            return User.objects.filter(memberships__isnull=False).distinct().prefetch_related("memberships__clinic")
+            return User.objects.filter(memberships__isnull=False).distinct().prefetch_related("memberships__clinic", "settings")
             
         auth = self.request.auth
         if not auth:
@@ -132,14 +136,12 @@ class UserViewSet(ModelViewSet):
         if not clinic_id:
             return User.objects.none()
 
-        from apps.clinics.models import Clinic
-        from rest_framework.exceptions import PermissionDenied
         if not Clinic.objects.filter(id=clinic_id, is_active=True).exists():
             raise PermissionDenied("Acesso negado: Esta clínica está inativa.")
 
         return User.objects.filter(
             memberships__clinic_id=clinic_id
-        ).distinct()
+        ).distinct().prefetch_related("memberships__clinic", "settings")
 
 
     def get_serializer_class(self):
@@ -154,10 +156,6 @@ class UserViewSet(ModelViewSet):
         context["request"] = self.request
         return context
 
-
-from django.utils.crypto import get_random_string
-from django.core.mail import send_mail
-from .models import PasswordResetToken
 
 class RequestPasswordResetView(APIView):
     permission_classes = [AllowAny]

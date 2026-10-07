@@ -1,11 +1,21 @@
+from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.utils.crypto import get_random_string
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.response import Response
+from rest_framework import status
 from rest_framework.decorators import action
 
+from core.middleware import get_current_ip
+
 from apps.accounts.models import Membership
+from apps.audit.services import log_audit_event
 from .models import Clinic
 from .serializers import ClinicSerializer
+
+User = get_user_model()
 
 
 class ClinicViewSet(ModelViewSet):
@@ -30,13 +40,6 @@ class ClinicViewSet(ModelViewSet):
         return Clinic.objects.none()
 
     def create(self, request, *args, **kwargs):
-        from django.contrib.auth import get_user_model
-        from apps.accounts.models import Membership
-        from django.db import transaction
-        from django.utils.crypto import get_random_string
-        from rest_framework.response import Response
-        from rest_framework import status
-
         if not self.request.user.is_superuser:
             raise PermissionDenied("Você não tem permissão para criar clínicas.")
 
@@ -46,7 +49,6 @@ class ClinicViewSet(ModelViewSet):
         with transaction.atomic():
             clinic = serializer.save()
             
-            User = get_user_model()
             admin_email = clinic.email
             
             # Se o email já existir, criamos um específico
@@ -114,17 +116,14 @@ class ClinicViewSet(ModelViewSet):
         # Encontra o admin da clínica
         membership = Membership.objects.filter(clinic=clinic, role="ADMIN").first()
         if not membership:
-            from rest_framework.response import Response
             return Response({"detail": "Clínica não possui um administrador."}, status=400)
             
         admin_user = membership.user
-        from django.utils.crypto import get_random_string
         new_password = get_random_string(12, allowed_chars='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*')
         admin_user.set_password(new_password)
         admin_user.force_password_change = True
         admin_user.save()
         
-        from apps.audit.services import log_audit_event
         log_audit_event(
             user=request.user,
             clinic=None,
@@ -132,10 +131,9 @@ class ClinicViewSet(ModelViewSet):
             model_name="User",
             object_id=str(admin_user.pk),
             before_data={"event": "Senha resetada pelo SuperAdmin"},
-            ip_address=request.META.get("REMOTE_ADDR"),
+            ip_address=get_current_ip(),
         )
         
-        from rest_framework.response import Response
         return Response({
             "detail": "Senha redefinida com sucesso.",
             "temporary_password": new_password,
