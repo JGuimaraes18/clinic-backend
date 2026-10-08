@@ -1,4 +1,6 @@
 from django.contrib.auth import authenticate, get_user_model
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from rest_framework import serializers
 
 from apps.clinics.models import Clinic
@@ -162,33 +164,39 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
         request = self.context["request"]
 
-        user = User.objects.create_user(
-            password=password,
-            **validated_data
-        )
+        with transaction.atomic():
+            user = User.objects.create_user(
+                password=password,
+                **validated_data
+            )
 
-        if request.user.is_superuser:
-            if not clinic_id:
-                raise serializers.ValidationError("A clínica (clinic_id) é obrigatória para o SuperAdmin cadastrar um usuário.")
-        else:
-            clinic_id = request.auth.get("clinic_id") if request.auth else None
-            if not clinic_id:
-                raise serializers.ValidationError("Não foi possível identificar a clínica ativa.")
+            if request.user.is_superuser:
+                if not clinic_id:
+                    raise serializers.ValidationError("A clínica (clinic_id) é obrigatória para o SuperAdmin cadastrar um usuário.")
+            else:
+                clinic_id = request.auth.get("clinic_id") if request.auth else None
+                if not clinic_id:
+                    raise serializers.ValidationError("Não foi possível identificar a clínica ativa.")
 
-        from apps.clinics.models import Clinic
-        try:
-            clinic = Clinic.objects.get(id=clinic_id)
-            if not clinic.is_active:
-                raise serializers.ValidationError("Esta clínica está desativada.")
-        except Clinic.DoesNotExist:
-            raise serializers.ValidationError("Clínica não encontrada.")
+            from apps.clinics.models import Clinic
+            try:
+                clinic = Clinic.objects.get(id=clinic_id)
+                if not clinic.is_active:
+                    raise serializers.ValidationError("Esta clínica está desativada.")
+            except Clinic.DoesNotExist:
+                raise serializers.ValidationError("Clínica não encontrada.")
 
-        Membership.objects.create(
-            user=user,
-            clinic_id=clinic_id,
-            role=role or "ATTENDANT",
-        )
+            try:
+                Membership.objects.create(
+                    user=user,
+                    clinic_id=clinic_id,
+                    role=role or "ATTENDANT",
+                )
+            except DjangoValidationError as exc:
+                raise serializers.ValidationError(exc.messages)
 
+        # Sem atomic acima, um erro de negocio depois de create_user()
+        # deixaria um usuario orfao (sem membership) persistido no banco.
         return user
 
 
@@ -239,35 +247,39 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
         request = self.context["request"]
 
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+        try:
+            with transaction.atomic():
+                for attr, value in validated_data.items():
+                    setattr(instance, attr, value)
 
-        if password:
-            instance.set_password(password)
+                if password:
+                    instance.set_password(password)
 
-        instance.save()
+                instance.save()
 
-        # Update or create membership
-        if request.user.is_superuser:
-            membership = instance.memberships.first()
-            if membership:
-                if clinic_id:
-                    membership.clinic_id = clinic_id
-                if role:
-                    membership.role = role
-                membership.save()
-            else:
-                if clinic_id:
-                    Membership.objects.create(
-                        user=instance,
-                        clinic_id=clinic_id,
-                        role=role or "ADMIN"
-                    )
-        else:
-            membership = instance.memberships.filter(is_active=True).first()
-            if role and membership:
-                membership.role = role
-            if membership:
-                membership.save()
+                # Update or create membership
+                if request.user.is_superuser:
+                    membership = instance.memberships.first()
+                    if membership:
+                        if clinic_id:
+                            membership.clinic_id = clinic_id
+                        if role:
+                            membership.role = role
+                        membership.save()
+                    else:
+                        if clinic_id:
+                            Membership.objects.create(
+                                user=instance,
+                                clinic_id=clinic_id,
+                                role=role or "ADMIN"
+                            )
+                else:
+                    membership = instance.memberships.filter(is_active=True).first()
+                    if role and membership:
+                        membership.role = role
+                    if membership:
+                        membership.save()
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.messages)
 
         return instance

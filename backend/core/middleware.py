@@ -53,11 +53,13 @@ class ForcePasswordChangeMiddleware(MiddlewareMixin):
         if not request.path.startswith("/api/"):
             return None
 
-        # Exclude login, forgot password, reset password
+        # Rotas publicas (AllowAny): nao ha ator de auditoria a injetar e
+        # o bloqueio de troca de senha obrigatoria nao deve ser aplicado.
         exempt_urls = [
             "/api/auth/login/",
-            "/api/auth/forgot-password/",
-            "/api/auth/reset-password/",
+            "/api/auth/password-reset/request/",
+            "/api/auth/password-reset/confirm/",
+            "/api/auth/token/refresh/",
         ]
         
         # Check if the URL is exempt

@@ -140,7 +140,8 @@ class UserViewSet(ModelViewSet):
             raise PermissionDenied("Acesso negado: Esta clínica está inativa.")
 
         return User.objects.filter(
-            memberships__clinic_id=clinic_id
+            memberships__clinic_id=clinic_id,
+            memberships__is_active=True
         ).distinct().prefetch_related("memberships__clinic", "settings")
 
 

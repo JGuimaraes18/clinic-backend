@@ -1,9 +1,10 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.utils.crypto import get_random_string
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import action
@@ -68,11 +69,14 @@ class ClinicViewSet(ModelViewSet):
             )
             
             # Associa como ADMIN exclusivo
-            Membership.objects.create(
-                user=user,
-                clinic=clinic,
-                role="ADMIN"
-            )
+            try:
+                Membership.objects.create(
+                    user=user,
+                    clinic=clinic,
+                    role="ADMIN"
+                )
+            except DjangoValidationError as exc:
+                raise ValidationError(exc.messages)
 
         headers = self.get_success_headers(serializer.data)
         response_data = serializer.data
